@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Jakarta",
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+  "minimumReleaseAge": "3 days",
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Group non-major npm dependency updates to reduce PR noise.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm non-major dependencies",
+      "groupSlug": "npm-non-major"
+    },
+    {
+      "description": "Require explicit approval before opening major-version update PRs.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Keep TypeScript-related packages together.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["typescript", "ts-node", "ts-node-dev", "@types/**"],
+      "groupName": "TypeScript toolchain",
+      "groupSlug": "typescript-toolchain"
+    }
+  ]
+}
