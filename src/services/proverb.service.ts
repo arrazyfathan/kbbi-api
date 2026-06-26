@@ -201,8 +201,9 @@ export class ProverbService {
       return null;
     }
 
-    const pathname = new URL(value).pathname;
-    const slug = pathname.split("/").pop();
+    const url = new URL(value);
+    const title = url.searchParams.get("title");
+    const slug = title || url.pathname.split("/").pop();
 
     return slug ? this.normalizeSlug(slug) : null;
   }
