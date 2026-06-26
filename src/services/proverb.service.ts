@@ -140,10 +140,7 @@ export class ProverbService {
       .filter(Boolean);
 
     const text = fallback?.text || paragraphs[0] || title;
-    const meaningParagraph = paragraphs.find((paragraph) => /^artinya\s*:/i.test(paragraph));
-    const meaning = meaningParagraph
-      ? this.normalizeText(meaningParagraph.replace(/^artinya\s*:\s*/i, ""))
-      : null;
+    const meaning = this.extractMeaning($);
     const slug = fallback?.slug || this.slugFromText(title || text);
 
     return {
@@ -153,6 +150,45 @@ export class ProverbService {
       sourceUrl: fallback?.sourceUrl || this.getProverbUrl(slug),
       meaning,
     };
+  }
+
+  private static extractMeaning($: cheerio.CheerioAPI): string | null {
+    const content = $("#mw-content-text .mw-parser-output").first();
+    let meaning: string | null = null;
+
+    content.children().each((_, element) => {
+      if (meaning !== null) {
+        return false;
+      }
+
+      const current = $(element);
+      const currentText = this.normalizeText(current.text());
+      const inlineMeaning = currentText.match(/^artinya\s*:\s*(.+)$/i);
+
+      if (inlineMeaning?.[1]) {
+        meaning = this.normalizeText(inlineMeaning[1]);
+        return false;
+      }
+
+      if (!/^artinya\s*:?\s*$/i.test(currentText)) {
+        return;
+      }
+
+      const nextMeaningItems = current
+        .nextUntil("h2, h3, h4, .mw-heading")
+        .filter("ol, ul")
+        .first()
+        .find("li")
+        .map((_, item) => this.normalizeText($(item).text()))
+        .get()
+        .filter(Boolean);
+
+      if (nextMeaningItems.length > 0) {
+        meaning = nextMeaningItems.join("; ");
+      }
+    });
+
+    return meaning || null;
   }
 
   private static paginate(items: Proverb[], page: number, limit: number): PaginatedProverbList {
