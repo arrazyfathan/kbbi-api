@@ -170,7 +170,9 @@ export class ProverbService {
         return false;
       }
 
-      if (!/^artinya\s*:?\s*$/i.test(currentText)) {
+      const hasMeaningList = /^artinya\s*:?\s*$/i.test(currentText) || /:\s*$/.test(currentText);
+
+      if (!hasMeaningList) {
         return;
       }
 
