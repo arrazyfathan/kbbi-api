@@ -139,8 +139,9 @@ export class ProverbService {
       .get()
       .filter(Boolean);
 
-    const text = fallback?.text || paragraphs[0] || title;
-    const meaning = this.extractMeaning($);
+    const proverbText = fallback?.text || title;
+    const text = proverbText || paragraphs[0] || title;
+    const meaning = this.extractMeaning($, proverbText);
     const slug = fallback?.slug || this.slugFromText(title || text);
 
     return {
@@ -152,9 +153,10 @@ export class ProverbService {
     };
   }
 
-  private static extractMeaning($: cheerio.CheerioAPI): string | null {
+  private static extractMeaning($: cheerio.CheerioAPI, proverbText?: string): string | null {
     const content = $("#mw-content-text .mw-parser-output").first();
     let meaning: string | null = null;
+    const label = this.normalizeLabel(proverbText || "");
 
     content.children().each((_, element) => {
       if (meaning !== null) {
@@ -163,37 +165,43 @@ export class ProverbService {
 
       const current = $(element);
       const currentText = this.normalizeText(current.text());
-      const inlineMeaning = currentText.match(/(?:^|\s)artinya\s*:\s*(.+)$/i);
+      const currentHeadingText = this.normalizeText(current.find(".mw-headline, h2, h3, h4").first().text());
+      const inlineMeaning = currentText.match(/(?:^|[\s;,.])artinya(?:\s+adalah)?\s*[:;,]?\s*(.+)$/i);
 
       if (inlineMeaning?.[1]) {
-        const meaningParts = [this.normalizeText(inlineMeaning[1])];
-        const nextMeaningItems = current
-          .nextUntil("h2, h3, h4, .mw-heading")
-          .filter("ol, ul")
-          .first()
-          .find("li")
-          .map((_, item) => this.normalizeText($(item).text()))
-          .get()
-          .filter(Boolean);
+        const meaningParts = [this.normalizeMeaningText(inlineMeaning[1])];
+        const nextMeaningItems = this.getNextMeaningItems($, current);
 
         meaning = [...meaningParts, ...nextMeaningItems].filter(Boolean).join("; ");
         return false;
       }
 
-      const hasMeaningList = /^artinya\s*:?\s*$/i.test(currentText) || /:\s*$/.test(currentText);
+      const currentLabel = this.normalizeLabel(current.find("b").first().text() || label);
+      const labeledMeaning = this.extractLabeledMeaning(currentText, currentLabel);
+
+      if (labeledMeaning) {
+        meaning = labeledMeaning;
+        return false;
+      }
+
+      const nextMeaningItems = this.getNextMeaningItems($, current);
+
+      if (nextMeaningItems.length > 0 && this.looksLikeProverbIntro(currentText, currentLabel)) {
+        meaning = nextMeaningItems.join("; ");
+        return false;
+      }
+
+      if (current.is("p, pre") && this.looksLikeStandaloneMeaning(currentText, label)) {
+        meaning = currentText;
+        return false;
+      }
+
+      const hasMeaningList =
+        /^(arti|artinya)\s*:?\s*$/i.test(currentHeadingText || currentText) || /:\s*$/.test(currentText);
 
       if (!hasMeaningList) {
         return;
       }
-
-      const nextMeaningItems = current
-        .nextUntil("h2, h3, h4, .mw-heading")
-        .filter("ol, ul")
-        .first()
-        .find("li")
-        .map((_, item) => this.normalizeText($(item).text()))
-        .get()
-        .filter(Boolean);
 
       if (nextMeaningItems.length > 0) {
         meaning = nextMeaningItems.join("; ");
@@ -201,6 +209,75 @@ export class ProverbService {
     });
 
     return meaning || null;
+  }
+
+  private static getNextMeaningItems($: cheerio.CheerioAPI, current: cheerio.Cheerio<any>): string[] {
+    return current
+      .nextUntil("h2, h3, h4, .mw-heading")
+      .filter("ol, ul")
+      .first()
+      .find("li")
+      .map((_, item) => this.normalizeText($(item).text()))
+      .get()
+      .filter(Boolean);
+  }
+
+  private static extractLabeledMeaning(text: string, label: string): string | null {
+    if (!text || !label) {
+      return null;
+    }
+
+    const match = text.match(new RegExp(`^${this.escapeRegExp(label)}\\s*['"“”]?\\s*(?:[-.:;,]\\s*|\\s+)(.+)$`, "i"));
+    const value = this.normalizeMeaningText(match?.[1] || "");
+
+    if (value) {
+      const explicitMeaning = value.match(
+        /^(?:adalah\s+)?(?:peribahasa\s+yang\s+)?(?:memiliki\s+arti|berarti|bermakna|maksudnya|artinya(?:\s+adalah)?)\s*[:;,]?\s*(.+)$/i,
+      );
+
+      return this.normalizeMeaningText(explicitMeaning?.[1] || value) || null;
+    }
+
+    const separatedMeaning = text.match(/^(.+?)\s*[:]\s*(.+)$/);
+
+    if (!separatedMeaning?.[1] || !separatedMeaning?.[2]) {
+      return null;
+    }
+
+    const heading = this.compactForMatch(separatedMeaning[1]);
+    const compactLabel = this.compactForMatch(label);
+
+    if (!heading.includes(compactLabel) && !compactLabel.includes(heading)) {
+      return null;
+    }
+
+    return this.normalizeMeaningText(separatedMeaning[2]) || null;
+  }
+
+  private static looksLikeProverbIntro(text: string, label: string): boolean {
+    if (!text || !label) {
+      return false;
+    }
+
+    const normalizedText = this.normalizeSearchText(text);
+    const normalizedLabel = this.normalizeSearchText(label);
+
+    return normalizedText === normalizedLabel || normalizedText.startsWith(`${normalizedLabel} `);
+  }
+
+  private static looksLikeStandaloneMeaning(text: string, label: string): boolean {
+    if (!text || text.length < 3) {
+      return false;
+    }
+
+    if (!label) {
+      return true;
+    }
+
+    const normalizedText = this.normalizeSearchText(text);
+    const normalizedLabel = this.normalizeSearchText(label);
+
+    return normalizedText !== normalizedLabel && !normalizedText.startsWith(normalizedLabel);
   }
 
   private static paginate(items: Proverb[], page: number, limit: number): PaginatedProverbList {
@@ -234,6 +311,22 @@ export class ProverbService {
 
   private static normalizeSearchText(value: string): string {
     return this.normalizeText(value).toLocaleLowerCase("id-ID");
+  }
+
+  private static normalizeMeaningText(value: string): string {
+    return this.normalizeText(value).replace(/^[-:;,\s]+/, "").trim();
+  }
+
+  private static normalizeLabel(value: string): string {
+    return this.normalizeText(value).replace(/\s*[:;,]+$/, "");
+  }
+
+  private static compactForMatch(value: string): string {
+    return this.normalizeSearchText(value).replace(/[^\p{L}\p{N}]+/gu, "");
+  }
+
+  private static escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   private static normalizeSlug(value: string): string {
