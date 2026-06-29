@@ -163,10 +163,20 @@ export class ProverbService {
 
       const current = $(element);
       const currentText = this.normalizeText(current.text());
-      const inlineMeaning = currentText.match(/^artinya\s*:\s*(.+)$/i);
+      const inlineMeaning = currentText.match(/(?:^|\s)artinya\s*:\s*(.+)$/i);
 
       if (inlineMeaning?.[1]) {
-        meaning = this.normalizeText(inlineMeaning[1]);
+        const meaningParts = [this.normalizeText(inlineMeaning[1])];
+        const nextMeaningItems = current
+          .nextUntil("h2, h3, h4, .mw-heading")
+          .filter("ol, ul")
+          .first()
+          .find("li")
+          .map((_, item) => this.normalizeText($(item).text()))
+          .get()
+          .filter(Boolean);
+
+        meaning = [...meaningParts, ...nextMeaningItems].filter(Boolean).join("; ");
         return false;
       }
 
