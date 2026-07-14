@@ -3,6 +3,7 @@ import "dotenv/config";
 const config = {
   kbbiUrl: "https://kbbi.kemendikdasmen.go.id/entri",
   wikiquoteProverbUrl: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
+  wikiquoteIndonesianFigureUrl: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
   baseUrl: process.env.BASE_URL || "http://localhost:3000",
 };
 

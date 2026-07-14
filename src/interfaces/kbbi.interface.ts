@@ -40,6 +40,30 @@ export interface ProverbDetail extends Proverb {
   meaning: string | null;
 }
 
+export interface IndonesianFigureSummary {
+  name: string | null;
+  slug: string;
+  sourceUrl: string;
+}
+
+export interface IndonesianFigure extends IndonesianFigureSummary {
+  photo: string | null;
+  description: string | null;
+  quotes: string[] | null;
+}
+
+export interface IndonesianFigureList {
+  source: string;
+  count: number;
+  items: IndonesianFigureSummary[];
+}
+
+export interface PaginatedIndonesianFigureList {
+  source: string;
+  pagination: Pagination;
+  items: IndonesianFigure[];
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
