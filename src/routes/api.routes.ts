@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import config from "../config";
+import HealthController from "../controllers/health.controller";
 import IndonesianFigureController from "../controllers/indonesian-figure.controller";
 import KbbiController from "../controllers/kbbi.controller";
 import ProverbController from "../controllers/proverb.controller";
@@ -9,8 +10,9 @@ const router = Router();
 router.get("/", (req: Request, res: Response) => {
   res.status(200).json({
     message: "Welcome to New KBBI API",
-    endpoints: ["/search/[word]", "/proverb", "/proverb/search", "/proverb/[slug]", "/figure", "/figure/search", "/figure/[slug]"],
+    endpoints: ["/health/supabase", "/search/[word]", "/proverb", "/proverb/search", "/proverb/[slug]", "/figure", "/figure/search", "/figure/[slug]"],
     examples: [
+      `${config.baseUrl}/health/supabase`,
       `${config.baseUrl}/search/demokrasi`,
       `${config.baseUrl}/proverb?page=1&limit=20`,
       `${config.baseUrl}/proverb/search?q=air`,
@@ -22,6 +24,7 @@ router.get("/", (req: Request, res: Response) => {
   });
 });
 
+router.get("/health/supabase", HealthController.supabase);
 router.get("/search/:word", KbbiController.search);
 router.get("/proverb", ProverbController.list);
 router.get("/proverb/search", ProverbController.search);
