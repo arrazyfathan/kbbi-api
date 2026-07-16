@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { KbbiService } from "../services/kbbi.service";
 import { ApiResponse, Entry } from "../interfaces/kbbi.interface";
+import { isUpstreamHttpError } from "../lib/http-client";
 
 export default class KbbiController {
   static async search(req: Request, res: Response<ApiResponse<Entry[]>>) {
@@ -32,6 +33,14 @@ export default class KbbiController {
       });
     } catch (error: any) {
       console.error(`Error searching word: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",

@@ -1,7 +1,7 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
 import config from "../config";
 import { Definition, Entry } from "../interfaces/kbbi.interface";
+import { getScraperHtml, isHttpNotFound } from "../lib/http-client";
 
 export class KbbiService {
   /**
@@ -14,7 +14,7 @@ export class KbbiService {
       const html = await this.fetchHtml(word);
       return this.parseHtml(html);
     } catch (error: any) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
+      if (isHttpNotFound(error)) {
         return null;
       }
       throw error;
@@ -22,12 +22,7 @@ export class KbbiService {
   }
 
   private static async fetchHtml(word: string): Promise<string> {
-    const response = await axios.get(`${config.kbbiUrl}/${encodeURIComponent(word)}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
-    });
-    return response.data;
+    return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`);
   }
 
   private static parseHtml(html: string): Entry[] | null {

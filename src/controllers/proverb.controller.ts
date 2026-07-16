@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ApiResponse, PaginatedProverbList, ProverbDetail } from "../interfaces/kbbi.interface";
+import { isUpstreamHttpError } from "../lib/http-client";
 import { ProverbService } from "../services/proverb.service";
 
 export default class ProverbController {
@@ -15,6 +16,14 @@ export default class ProverbController {
       });
     } catch (error: any) {
       console.error(`Error fetching proverb list: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -45,6 +54,14 @@ export default class ProverbController {
       });
     } catch (error: any) {
       console.error(`Error searching proverb list: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -73,6 +90,14 @@ export default class ProverbController {
       });
     } catch (error: any) {
       console.error(`Error fetching proverb detail: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",

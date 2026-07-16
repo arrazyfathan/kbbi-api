@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ApiResponse, IndonesianFigure, PaginatedIndonesianFigureList } from "../interfaces/kbbi.interface";
+import { isUpstreamHttpError } from "../lib/http-client";
 import { IndonesianFigureService } from "../services/indonesian-figure.service";
 
 export default class IndonesianFigureController {
@@ -15,6 +16,14 @@ export default class IndonesianFigureController {
       });
     } catch (error: any) {
       console.error(`Error fetching Indonesian figure list: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -45,6 +54,14 @@ export default class IndonesianFigureController {
       });
     } catch (error: any) {
       console.error(`Error searching Indonesian figures: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -73,6 +90,14 @@ export default class IndonesianFigureController {
       });
     } catch (error: any) {
       console.error(`Error fetching Indonesian figure detail: ${error.message}`);
+      if (isUpstreamHttpError(error)) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error",

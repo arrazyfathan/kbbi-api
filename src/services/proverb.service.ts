@@ -1,7 +1,7 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
 import config from "../config";
 import { PaginatedProverbList, Proverb, ProverbDetail, ProverbList } from "../interfaces/kbbi.interface";
+import { getScraperHtml, isHttpNotFound } from "../lib/http-client";
 
 export class ProverbService {
   private static cache: ProverbList | null = null;
@@ -41,7 +41,7 @@ export class ProverbService {
     try {
       html = await this.fetchHtml(this.getProverbUrl(normalizedSlug));
     } catch (error: any) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
+      if (isHttpNotFound(error)) {
         return null;
       }
 
@@ -73,13 +73,7 @@ export class ProverbService {
   }
 
   private static async fetchHtml(url: string): Promise<string> {
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; KBBI-API/1.1; +https://github.com/)",
-      },
-    });
-
-    return response.data;
+    return getScraperHtml(url);
   }
 
   private static parseHtml(html: string): Proverb[] {
