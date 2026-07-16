@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import config from ".";
+import logger from "../lib/logger";
 
 if (!config.supabaseUrl || !config.supabaseKey) {
-  console.warn("Supabase env is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.");
+  logger.warn("Supabase env is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.");
 }
 
 export const supabase = createClient(

@@ -10,28 +10,20 @@ interface SupabaseHealth {
 }
 
 export default class HealthController {
-  static async supabase(req: Request, res: Response<ApiResponse<SupabaseHealth>>) {
-    try {
-      const result = await checkSupabaseConnection();
-      const statusCode = result.connected ? 200 : 503;
+  static async supabase(req: Request, res: Response<ApiResponse<SupabaseHealth>>): Promise<void> {
+    const result = await checkSupabaseConnection();
+    const statusCode = result.connected ? 200 : 503;
 
-      res.status(statusCode).json({
-        success: result.connected,
-        message: result.connected ? "Supabase connection successful" : "Supabase connection failed",
-        data: {
-          connected: result.connected,
-          host: result.host,
-          status: result.status,
-          statusText: result.statusText,
-        },
-        error: result.error,
-      });
-    } catch (error: any) {
-      res.status(503).json({
-        success: false,
-        message: "Supabase connection failed",
-        error: error.message,
-      });
-    }
+    res.status(statusCode).json({
+      success: result.connected,
+      message: result.connected ? "Supabase connection successful" : "Supabase connection failed",
+      data: {
+        connected: result.connected,
+        host: result.host,
+        status: result.status,
+        statusText: result.statusText,
+      },
+      error: result.error,
+    });
   }
 }

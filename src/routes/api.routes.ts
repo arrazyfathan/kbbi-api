@@ -4,6 +4,7 @@ import HealthController from "../controllers/health.controller";
 import IndonesianFigureController from "../controllers/indonesian-figure.controller";
 import KbbiController from "../controllers/kbbi.controller";
 import ProverbController from "../controllers/proverb.controller";
+import { asyncHandler } from "../lib/async-handler";
 
 const router = Router();
 
@@ -24,13 +25,13 @@ router.get("/", (req: Request, res: Response) => {
   });
 });
 
-router.get("/health/supabase", HealthController.supabase);
-router.get("/search/:word", KbbiController.search);
-router.get("/proverb", ProverbController.list);
-router.get("/proverb/search", ProverbController.search);
-router.get("/proverb/:slug", ProverbController.detail);
-router.get("/figure", IndonesianFigureController.list);
-router.get("/figure/search", IndonesianFigureController.search);
-router.get("/figure/:slug", IndonesianFigureController.detail);
+router.get("/health/supabase", asyncHandler(HealthController.supabase));
+router.get("/search/:word", asyncHandler(KbbiController.search));
+router.get("/proverb", asyncHandler(ProverbController.list));
+router.get("/proverb/search", asyncHandler(ProverbController.search));
+router.get("/proverb/:slug", asyncHandler(ProverbController.detail));
+router.get("/figure", asyncHandler(IndonesianFigureController.list));
+router.get("/figure/search", asyncHandler(IndonesianFigureController.search));
+router.get("/figure/:slug", asyncHandler(IndonesianFigureController.detail));
 
 export default router;
