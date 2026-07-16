@@ -26,55 +26,59 @@ export class KbbiService {
   }
 
   private static parseHtml(html: string): Entry[] | null {
-    const $ = cheerio.load(html);
-    const results: Entry[] = [];
+    return parseKbbiHtml(html);
+  }
+}
 
-    // Remove unwanted elements like error messages or notices
-    $(".body-content > h4:contains('Pesan')").nextAll().remove();
+export function parseKbbiHtml(html: string): Entry[] | null {
+  const $ = cheerio.load(html);
+  const results: Entry[] = [];
 
-    const headwordElements = $(".body-content > h2");
+  // Remove unwanted elements like error messages or notices
+  $(".body-content > h4:contains('Pesan')").nextAll().remove();
 
-    headwordElements.each((_, element) => {
-      const headword = $(element).text().trim();
-      const definitions: Definition[] = [];
+  const headwordElements = $(".body-content > h2");
 
-      const listItems = $(element)
-        .nextAll("ul, ol")
-        .first()
-        .find("li");
+  headwordElements.each((_, element) => {
+    const headword = $(element).text().trim();
+    const definitions: Definition[] = [];
 
-      if (listItems.length === 0) return;
+    const listItems = $(element)
+      .nextAll("ul, ol")
+      .first()
+      .find("li");
 
-      listItems.each((_, li) => {
-        let wordClass = "";
-        const spans = $(li).find("span");
+    if (listItems.length === 0) return;
 
-        spans.each((_, span) => {
-          const title = $(span).attr("title") || "";
-          const text = $(span).text().trim();
-          wordClass += `${text}[${title}] `;
-          $(span).empty();
-        });
+    listItems.each((_, li) => {
+      let wordClass = "";
+      const spans = $(li).find("span");
 
-        const description = $(li)
-          .text()
-          .replace(/\n/g, "")
-          .trim();
-
-        definitions.push({
-          wordClass: wordClass.trim(),
-          description,
-        });
+      spans.each((_, span) => {
+        const title = $(span).attr("title") || "";
+        const text = $(span).text().trim();
+        wordClass += `${text}[${title}] `;
+        $(span).empty();
       });
 
-      if (definitions.length > 0) {
-        results.push({
-          headword,
-          definitions
-        });
-      }
+      const description = $(li)
+        .text()
+        .replace(/\n/g, "")
+        .trim();
+
+      definitions.push({
+        wordClass: wordClass.trim(),
+        description,
+      });
     });
 
-    return results.length > 0 ? results : null;
-  }
+    if (definitions.length > 0) {
+      results.push({
+        headword,
+        definitions,
+      });
+    }
+  });
+
+  return results.length > 0 ? results : null;
 }
