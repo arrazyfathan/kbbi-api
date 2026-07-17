@@ -19,7 +19,10 @@ type SupabaseLike = {
       values: Record<string, string>,
       options: { onConflict: string; ignoreDuplicates: boolean },
     ) => Promise<SupabaseQueryResult>;
-    select: (columns: string, options?: { count: "exact"; head: boolean }) => {
+    select: (
+      columns: string,
+      options?: { count: "exact"; head: boolean },
+    ) => {
       eq: (column: string, value: string) => Promise<SupabaseQueryResult>;
       order: (
         column: string,
@@ -57,19 +60,17 @@ export class WordVisitService {
 
     const visitedDate = toVisitedDate(options.now || new Date());
 
-    const insertResult = await client
-      .from(WORD_VISITS_TABLE)
-      .upsert(
-        {
-          word: normalizedWord,
-          visitor_hash: visitorHash,
-          visited_date: visitedDate,
-        },
-        {
-          onConflict: "word,visitor_hash,visited_date",
-          ignoreDuplicates: true,
-        },
-      );
+    const insertResult = await client.from(WORD_VISITS_TABLE).upsert(
+      {
+        word: normalizedWord,
+        visitor_hash: visitorHash,
+        visited_date: visitedDate,
+      },
+      {
+        onConflict: "word,visitor_hash,visited_date",
+        ignoreDuplicates: true,
+      },
+    );
 
     if (insertResult.error) {
       throw new Error(insertResult.error.message || "Failed to record word visit");

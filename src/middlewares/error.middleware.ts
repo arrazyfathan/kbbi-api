@@ -3,7 +3,10 @@ import { ApiResponse } from "../interfaces/kbbi.interface";
 import { isUpstreamHttpError } from "../lib/http-client";
 import logger from "../lib/logger";
 
-export function buildErrorResponse(error: unknown, nodeEnv = process.env.NODE_ENV): {
+export function buildErrorResponse(
+  error: unknown,
+  nodeEnv = process.env.NODE_ENV,
+): {
   statusCode: number;
   body: ApiResponse<never>;
 } {

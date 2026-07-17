@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { hashVisitorId, normalizeTopWordsLimit, normalizeWord, WordVisitService } from "../src/services/word-visit.service";
+import {
+  hashVisitorId,
+  normalizeTopWordsLimit,
+  normalizeWord,
+  WordVisitService,
+} from "../src/services/word-visit.service";
 
 describe("WordVisitService", () => {
   it("normalizes words and hashes visitor identifiers", () => {
@@ -47,7 +52,9 @@ describe("WordVisitService", () => {
   it("throws when Supabase cannot record the visit", async () => {
     const client = createSupabaseMock({ upsertError: "insert failed" });
 
-    await expect(WordVisitService.trackWordVisit("demokrasi", "visitor-1", { client })).rejects.toThrow("insert failed");
+    await expect(WordVisitService.trackWordVisit("demokrasi", "visitor-1", { client })).rejects.toThrow(
+      "insert failed",
+    );
   });
 
   it("fetches top visited words ordered by visitor count and word", async () => {

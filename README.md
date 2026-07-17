@@ -48,13 +48,13 @@ SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `PORT` | No | Server port. Defaults to `3000`. |
-| `BASE_URL` | No | Base URL used in the root endpoint examples. Defaults to `http://localhost:3000`. |
-| `SUPABASE_URL` | For visit tracking | Supabase project URL. |
-| `SUPABASE_ANON_KEY` | For visit tracking | Supabase anon key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Preferred Supabase key when provided. |
+| Variable                    | Required           | Description                                                                       |
+| --------------------------- | ------------------ | --------------------------------------------------------------------------------- |
+| `PORT`                      | No                 | Server port. Defaults to `3000`.                                                  |
+| `BASE_URL`                  | No                 | Base URL used in the root endpoint examples. Defaults to `http://localhost:3000`. |
+| `SUPABASE_URL`              | For visit tracking | Supabase project URL.                                                             |
+| `SUPABASE_ANON_KEY`         | For visit tracking | Supabase anon key.                                                                |
+| `SUPABASE_SERVICE_ROLE_KEY` | No                 | Preferred Supabase key when provided.                                             |
 
 ## Installation
 
@@ -140,12 +140,17 @@ The API will be available at `http://localhost:3000` unless `PORT` is changed.
 
 ## Available Scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the TypeScript development server with auto-reload. |
-| `npm run build` | Compile TypeScript into `dist/`. |
-| `npm start` | Run the compiled server from `dist/server.js`. |
-| `npm test` | Run the Vitest test suite. |
+| Command                | Description                                                  |
+| ---------------------- | ------------------------------------------------------------ |
+| `npm run dev`          | Start the TypeScript development server with auto-reload.    |
+| `npm run build`        | Compile TypeScript into `dist/`.                             |
+| `npm start`            | Run the compiled server from `dist/server.js`.               |
+| `npm test`             | Run the Vitest test suite.                                   |
+| `npm run lint`         | Run ESLint on source and test TypeScript files.              |
+| `npm run format`       | Format source, test, JSON, and Markdown files with Prettier. |
+| `npm run format:check` | Check formatting without writing changes.                    |
+| `npm run typecheck`    | Run TypeScript type checking without emitting files.         |
+| `npm run check`        | Run type checking, linting, format check, tests, and build.  |
 
 ## Testing
 
@@ -162,6 +167,16 @@ npm run build
 ```
 
 The test suite covers parser fixtures, controller behavior, error responses, word visit tracking, and top visited words behavior.
+
+## Code Quality
+
+This project uses Vitest for tests, ESLint flat config with TypeScript support for linting, and Prettier for formatting. ESLint formatting conflicts are disabled so Prettier owns code style while ESLint focuses on code quality.
+
+Run the full local verification before merging dependency updates or behavior changes:
+
+```bash
+npm run check
+```
 
 ## Project Structure
 

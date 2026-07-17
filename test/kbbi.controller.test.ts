@@ -10,7 +10,9 @@ vi.mock("../src/services/kbbi.service", () => ({
 }));
 
 vi.mock("../src/services/word-visit.service", async () => {
-  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>("../src/services/word-visit.service");
+  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>(
+    "../src/services/word-visit.service",
+  );
 
   return {
     ...actual,

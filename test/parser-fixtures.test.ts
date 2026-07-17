@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseIndonesianFigureCategoryHtml, parseIndonesianFigureDetailHtml } from "../src/services/indonesian-figure.service";
+import {
+  parseIndonesianFigureCategoryHtml,
+  parseIndonesianFigureDetailHtml,
+} from "../src/services/indonesian-figure.service";
 import { parseKbbiHtml } from "../src/services/kbbi.service";
 import { parseProverbDetailHtml, parseProverbListHtml } from "../src/services/proverb.service";
 

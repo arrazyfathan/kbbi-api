@@ -1,11 +1,13 @@
 # API Documentation
 
 ## Base URL
+
 `http://localhost:3000`
 
 ## Endpoints
 
 ### 1. Welcome / Info
+
 Returns basic information about the API.
 
 - **URL**: `/`
@@ -16,7 +18,16 @@ Returns basic information about the API.
     ```json
     {
       "message": "Welcome to New KBBI API",
-      "endpoints": ["/search/[word]", "/words/top", "/proverb", "/proverb/search", "/proverb/[slug]", "/figure", "/figure/search", "/figure/[slug]"],
+      "endpoints": [
+        "/search/[word]",
+        "/words/top",
+        "/proverb",
+        "/proverb/search",
+        "/proverb/[slug]",
+        "/figure",
+        "/figure/search",
+        "/figure/[slug]"
+      ],
       "examples": [
         "http://localhost:3000/search/demokrasi",
         "http://localhost:3000/words/top?limit=10",
@@ -31,6 +42,7 @@ Returns basic information about the API.
     ```
 
 ### 2. Search Word
+
 Searches for a specific word in the KBBI database.
 
 - **URL**: `/search/:word`
@@ -86,6 +98,7 @@ Searches for a specific word in the KBBI database.
     ```
 
 ### 3. Top Visited Words
+
 Returns the most visited KBBI words, ranked by all-time unique daily visitor records.
 
 - **URL**: `/words/top`
@@ -117,6 +130,7 @@ Returns the most visited KBBI words, ranked by all-time unique daily visitor rec
     ```
 
 ### 4. List Proverbs
+
 Returns paginated Indonesian proverbs scraped from Wikiquote.
 
 - **URL**: `/proverb`
@@ -161,6 +175,7 @@ Returns paginated Indonesian proverbs scraped from Wikiquote.
     ```
 
 ### 5. Search Proverbs
+
 Searches proverbs by text and returns paginated results.
 
 - **URL**: `/proverb/search`
@@ -208,6 +223,7 @@ Searches proverbs by text and returns paginated results.
     ```
 
 ### 6. Proverb Detail
+
 Returns a proverb and its meaning from the proverb detail page.
 
 - **URL**: `/proverb/:slug`
@@ -241,6 +257,7 @@ Returns a proverb and its meaning from the proverb detail page.
     ```
 
 ### 7. List Indonesian Figures
+
 Returns paginated Indonesian figures scraped from Wikiquote. Each item includes detailed fields from the figure page.
 
 - **URL**: `/figure`
@@ -273,9 +290,7 @@ Returns paginated Indonesian figures scraped from Wikiquote. Each item includes 
             "sourceUrl": "https://id.wikiquote.org/wiki/Soekarno",
             "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg",
             "description": "Soekarno adalah presiden pertama Republik Indonesia yang menjabat pada kurun waktu 1945-1967.",
-            "quotes": [
-              "Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"
-            ]
+            "quotes": ["Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"]
           }
         ]
       }
@@ -283,6 +298,7 @@ Returns paginated Indonesian figures scraped from Wikiquote. Each item includes 
     ```
 
 ### 8. Search Indonesian Figures
+
 Searches Indonesian figures by name and returns paginated detailed results.
 
 - **URL**: `/figure/search`
@@ -294,6 +310,7 @@ Searches Indonesian figures by name and returns paginated detailed results.
 - **Example**: `/figure/search?q=soekarno`
 
 ### 9. Indonesian Figure Detail
+
 Returns one Indonesian figure from a Wikiquote slug.
 
 - **URL**: `/figure/:slug`

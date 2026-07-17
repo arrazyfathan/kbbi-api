@@ -3,7 +3,9 @@ import WordController from "../src/controllers/word.controller";
 import { WordVisitService } from "../src/services/word-visit.service";
 
 vi.mock("../src/services/word-visit.service", async () => {
-  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>("../src/services/word-visit.service");
+  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>(
+    "../src/services/word-visit.service",
+  );
 
   return {
     ...actual,

@@ -245,7 +245,9 @@ export class ProverbService {
   }
 
   private static normalizeMeaningText(value: string): string {
-    return this.normalizeText(value).replace(/^[-:;,\s]+/, "").trim();
+    return this.normalizeText(value)
+      .replace(/^[-:;,\s]+/, "")
+      .trim();
   }
 
   private static normalizeLabel(value: string): string {
@@ -499,7 +501,9 @@ function normalizeProverbSearchText(value: string): string {
 }
 
 function normalizeProverbMeaningText(value: string): string {
-  return normalizeProverbText(value).replace(/^[-:;,\s]+/, "").trim();
+  return normalizeProverbText(value)
+    .replace(/^[-:;,\s]+/, "")
+    .trim();
 }
 
 function normalizeProverbLabel(value: string): string {

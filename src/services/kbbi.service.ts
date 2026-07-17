@@ -43,10 +43,7 @@ export function parseKbbiHtml(html: string): Entry[] | null {
     const headword = $(element).text().trim();
     const definitions: Definition[] = [];
 
-    const listItems = $(element)
-      .nextAll("ul, ol")
-      .first()
-      .find("li");
+    const listItems = $(element).nextAll("ul, ol").first().find("li");
 
     if (listItems.length === 0) return;
 
@@ -61,10 +58,7 @@ export function parseKbbiHtml(html: string): Entry[] | null {
         $(span).empty();
       });
 
-      const description = $(li)
-        .text()
-        .replace(/\n/g, "")
-        .trim();
+      const description = $(li).text().replace(/\n/g, "").trim();
 
       definitions.push({
         wordClass: wordClass.trim(),

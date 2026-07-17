@@ -113,7 +113,10 @@ export class IndonesianFigureService {
     return getScraperHtml(url);
   }
 
-  private static parseCategoryHtml(html: string, currentUrl: string): { items: IndonesianFigureSummary[]; nextUrl: string | null } {
+  private static parseCategoryHtml(
+    html: string,
+    currentUrl: string,
+  ): { items: IndonesianFigureSummary[]; nextUrl: string | null } {
     return parseIndonesianFigureCategoryHtml(html, currentUrl);
   }
 
@@ -134,19 +137,21 @@ export class IndonesianFigureService {
     const ignoredImagePattern = /(Commons-logo|Wikipedia-logo|Wikisource-logo|Wikiquote-logo|OOjs_UI_icon)/i;
     let photo: string | null = null;
 
-    $("#mw-content-text .mw-parser-output figure img, #mw-content-text .mw-parser-output .infobox img").each((_, image) => {
-      if (photo) {
-        return false;
-      }
+    $("#mw-content-text .mw-parser-output figure img, #mw-content-text .mw-parser-output .infobox img").each(
+      (_, image) => {
+        if (photo) {
+          return false;
+        }
 
-      const src = $(image).attr("src");
+        const src = $(image).attr("src");
 
-      if (!src || ignoredImagePattern.test(src)) {
-        return;
-      }
+        if (!src || ignoredImagePattern.test(src)) {
+          return;
+        }
 
-      photo = new URL(src, sourceUrl).toString();
-    });
+        photo = new URL(src, sourceUrl).toString();
+      },
+    );
 
     return photo;
   }
@@ -187,17 +192,20 @@ export class IndonesianFigureService {
       return quotes;
     }
 
-    content.children("ul, ol").children("li").each((_, item) => {
-      const quote = this.normalizeQuoteText(this.textWithoutNestedLists($, $(item)));
-      const key = this.normalizeSearchText(quote);
+    content
+      .children("ul, ol")
+      .children("li")
+      .each((_, item) => {
+        const quote = this.normalizeQuoteText(this.textWithoutNestedLists($, $(item)));
+        const key = this.normalizeSearchText(quote);
 
-      if (!quote || seen.has(key)) {
-        return;
-      }
+        if (!quote || seen.has(key)) {
+          return;
+        }
 
-      seen.add(key);
-      quotes.push(quote);
-    });
+        seen.add(key);
+        quotes.push(quote);
+      });
 
     return quotes;
   }
@@ -244,7 +252,9 @@ export class IndonesianFigureService {
   }
 
   private static normalizeQuoteText(value: string): string {
-    return this.normalizeText(value).replace(/[.。]\s*$/, "").trim();
+    return this.normalizeText(value)
+      .replace(/[.。]\s*$/, "")
+      .trim();
   }
 
   private static normalizeSearchText(value: string): string {
@@ -348,19 +358,21 @@ function extractFigurePhoto($: cheerio.CheerioAPI, sourceUrl: string): string | 
   const ignoredImagePattern = /(Commons-logo|Wikipedia-logo|Wikisource-logo|Wikiquote-logo|OOjs_UI_icon)/i;
   let photo: string | null = null;
 
-  $("#mw-content-text .mw-parser-output figure img, #mw-content-text .mw-parser-output .infobox img").each((_, image) => {
-    if (photo) {
-      return false;
-    }
+  $("#mw-content-text .mw-parser-output figure img, #mw-content-text .mw-parser-output .infobox img").each(
+    (_, image) => {
+      if (photo) {
+        return false;
+      }
 
-    const src = $(image).attr("src");
+      const src = $(image).attr("src");
 
-    if (!src || ignoredImagePattern.test(src)) {
-      return;
-    }
+      if (!src || ignoredImagePattern.test(src)) {
+        return;
+      }
 
-    photo = new URL(src, sourceUrl).toString();
-  });
+      photo = new URL(src, sourceUrl).toString();
+    },
+  );
 
   return photo;
 }
@@ -401,17 +413,20 @@ function extractFigureQuotes($: cheerio.CheerioAPI): string[] {
     return quotes;
   }
 
-  content.children("ul, ol").children("li").each((_, item) => {
-    const quote = normalizeFigureQuoteText(textWithoutNestedFigureLists($, $(item)));
-    const key = normalizeFigureSearchText(quote);
+  content
+    .children("ul, ol")
+    .children("li")
+    .each((_, item) => {
+      const quote = normalizeFigureQuoteText(textWithoutNestedFigureLists($, $(item)));
+      const key = normalizeFigureSearchText(quote);
 
-    if (!quote || seen.has(key)) {
-      return;
-    }
+      if (!quote || seen.has(key)) {
+        return;
+      }
 
-    seen.add(key);
-    quotes.push(quote);
-  });
+      seen.add(key);
+      quotes.push(quote);
+    });
 
   return quotes;
 }
@@ -433,7 +448,9 @@ function normalizeFigureText(value: string): string {
 }
 
 function normalizeFigureQuoteText(value: string): string {
-  return normalizeFigureText(value).replace(/[.。]\s*$/, "").trim();
+  return normalizeFigureText(value)
+    .replace(/[.。]\s*$/, "")
+    .trim();
 }
 
 function normalizeFigureSearchText(value: string): string {
