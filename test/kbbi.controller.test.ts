@@ -43,7 +43,7 @@ describe("KbbiController.search", () => {
 
     await KbbiController.search(req, res);
 
-    expect(KbbiService.search).toHaveBeenCalledWith(" Demokrasi ");
+    expect(KbbiService.search).toHaveBeenCalledWith("Demokrasi");
     expect(WordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "mobile-visitor-1");
     expect(res.status).toHaveBeenCalledWith(200);
     expect(body.value).toEqual({
@@ -117,6 +117,22 @@ describe("KbbiController.search", () => {
     expect(body.value).toEqual({
       success: false,
       message: "Word not found",
+    });
+  });
+
+  it("returns 400 when word is blank", async () => {
+    const { req, res, body } = createRequestResponse({
+      params: { word: "   " },
+    });
+
+    await KbbiController.search(req, res);
+
+    expect(KbbiService.search).not.toHaveBeenCalled();
+    expect(WordVisitService.trackWordVisit).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(body.value).toEqual({
+      success: false,
+      message: "Parameter 'word' is required and must be a string",
     });
   });
 });

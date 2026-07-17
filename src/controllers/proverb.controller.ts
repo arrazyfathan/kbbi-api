@@ -1,10 +1,18 @@
 import { Request, Response } from "express";
 import { ApiResponse, PaginatedProverbList, ProverbDetail } from "../interfaces/kbbi.interface";
+import { parsePaginationParams, parseRequiredQuery, parseSlugParam } from "../lib/request-validation";
 import { ProverbService } from "../services/proverb.service";
 
 export default class ProverbController {
   static async list(req: Request, res: Response<ApiResponse<PaginatedProverbList>>): Promise<void> {
-    const { page, limit } = ProverbController.getPaginationParams(req);
+    const pagination = parsePaginationParams(req.query, { maxLimit: 100 });
+
+    if (!pagination.success) {
+      res.status(400).json(pagination.response);
+      return;
+    }
+
+    const { page, limit } = pagination.data;
     const results = await ProverbService.list(page, limit);
 
     res.status(200).json({
@@ -15,18 +23,22 @@ export default class ProverbController {
   }
 
   static async search(req: Request, res: Response<ApiResponse<PaginatedProverbList>>): Promise<void> {
-    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const query = parseRequiredQuery(req.query.q, "q");
 
-    if (!query) {
-      res.status(400).json({
-        success: false,
-        message: "Query parameter 'q' is required",
-      });
+    if (!query.success) {
+      res.status(400).json(query.response);
       return;
     }
 
-    const { page, limit } = ProverbController.getPaginationParams(req);
-    const results = await ProverbService.search(query, page, limit);
+    const pagination = parsePaginationParams(req.query, { maxLimit: 100 });
+
+    if (!pagination.success) {
+      res.status(400).json(pagination.response);
+      return;
+    }
+
+    const { page, limit } = pagination.data;
+    const results = await ProverbService.search(query.data, page, limit);
 
     res.status(200).json({
       success: true,
@@ -36,8 +48,14 @@ export default class ProverbController {
   }
 
   static async detail(req: Request, res: Response<ApiResponse<ProverbDetail>>): Promise<void> {
-    const slug = typeof req.params.slug === "string" ? req.params.slug : "";
-    const result = await ProverbService.detail(slug);
+    const slug = parseSlugParam(req.params.slug);
+
+    if (!slug.success) {
+      res.status(400).json(slug.response);
+      return;
+    }
+
+    const result = await ProverbService.detail(slug.data);
 
     if (!result) {
       res.status(404).json({
@@ -52,12 +70,5 @@ export default class ProverbController {
       message: "Proverb detail fetched successfully",
       data: result,
     });
-  }
-
-  private static getPaginationParams(req: Request) {
-    const page = Number.parseInt(String(req.query.page || "1"), 10);
-    const limit = Number.parseInt(String(req.query.limit || "20"), 10);
-
-    return { page, limit };
   }
 }
