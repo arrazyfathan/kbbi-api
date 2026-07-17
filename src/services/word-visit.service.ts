@@ -38,6 +38,11 @@ export class WordVisitService {
     }
 
     const client = options.client || supabase;
+
+    if (!client) {
+      throw new Error("Supabase is not configured");
+    }
+
     const visitedDate = toVisitedDate(options.now || new Date());
 
     const insertResult = await client
