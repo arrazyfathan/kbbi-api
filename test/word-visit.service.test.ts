@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { hashVisitorId, normalizeWord, WordVisitService } from "../src/services/word-visit.service";
+import { hashVisitorId, normalizeTopWordsLimit, normalizeWord, WordVisitService } from "../src/services/word-visit.service";
 
 describe("WordVisitService", () => {
   it("normalizes words and hashes visitor identifiers", () => {
@@ -49,6 +49,43 @@ describe("WordVisitService", () => {
 
     await expect(WordVisitService.trackWordVisit("demokrasi", "visitor-1", { client })).rejects.toThrow("insert failed");
   });
+
+  it("fetches top visited words ordered by visitor count and word", async () => {
+    const client = createTopWordsSupabaseMock({
+      data: [
+        { word: "demokrasi", visitor_count: 12 },
+        { word: "ajar", visitor_count: 8 },
+      ],
+    });
+
+    await expect(WordVisitService.getTopVisitedWords(5, { client })).resolves.toEqual([
+      { word: "demokrasi", visitorCount: 12 },
+      { word: "ajar", visitorCount: 8 },
+    ]);
+
+    expect(client.calls).toEqual({
+      table: "top_word_visits",
+      select: "word, visitor_count",
+      orders: [
+        { column: "visitor_count", options: { ascending: false } },
+        { column: "word", options: { ascending: true } },
+      ],
+      limit: 5,
+    });
+  });
+
+  it("normalizes top word limits", () => {
+    expect(normalizeTopWordsLimit(Number.NaN)).toBe(10);
+    expect(normalizeTopWordsLimit(0)).toBe(10);
+    expect(normalizeTopWordsLimit(10.8)).toBe(10);
+    expect(normalizeTopWordsLimit(150)).toBe(100);
+  });
+
+  it("throws when Supabase cannot fetch top visited words", async () => {
+    const client = createTopWordsSupabaseMock({ error: "view unavailable" });
+
+    await expect(WordVisitService.getTopVisitedWords(10, { client })).rejects.toThrow("view unavailable");
+  });
 });
 
 function createSupabaseMock(options: { count?: number; upsertError?: string; countError?: string }) {
@@ -88,6 +125,65 @@ function createSupabaseMock(options: { count?: number; upsertError?: string; cou
               return {
                 count: options.count ?? 0,
                 error: options.countError ? { message: options.countError } : null,
+              };
+            },
+            order() {
+              throw new Error("order should not be called for visit tracking");
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+function createTopWordsSupabaseMock(options: {
+  data?: Array<{ word: string; visitor_count: number }>;
+  error?: string;
+}) {
+  const calls: {
+    table?: string;
+    select?: string;
+    orders: Array<{ column: string; options: { ascending: boolean } }>;
+    limit?: number;
+  } = {
+    orders: [],
+  };
+
+  return {
+    calls,
+    from(table: string) {
+      calls.table = table;
+
+      return {
+        async upsert() {
+          throw new Error("upsert should not be called for top words");
+        },
+        select(columns: string) {
+          calls.select = columns;
+
+          return {
+            async eq() {
+              throw new Error("eq should not be called for top words");
+            },
+            order(column: string, orderOptions: { ascending: boolean }) {
+              calls.orders.push({ column, options: orderOptions });
+
+              return {
+                order(nextColumn: string, nextOrderOptions: { ascending: boolean }) {
+                  calls.orders.push({ column: nextColumn, options: nextOrderOptions });
+
+                  return {
+                    async limit(count: number) {
+                      calls.limit = count;
+
+                      return {
+                        data: options.data || [],
+                        error: options.error ? { message: options.error } : null,
+                      };
+                    },
+                  };
+                },
               };
             },
           };

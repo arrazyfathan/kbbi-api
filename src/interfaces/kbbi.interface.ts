@@ -14,6 +14,16 @@ export interface KbbiSearchResult {
   entries: Entry[];
 }
 
+export interface TopVisitedWord {
+  word: string;
+  visitorCount: number;
+}
+
+export interface TopVisitedWordsResult {
+  count: number;
+  items: TopVisitedWord[];
+}
+
 export interface Proverb {
   text: string;
   letter: string;

@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { supabase } from "../config/supabase";
+import { TopVisitedWord } from "../interfaces/kbbi.interface";
 
 const WORD_VISITS_TABLE = "word_visits";
+const TOP_WORD_VISITS_VIEW = "top_word_visits";
+const DEFAULT_TOP_WORDS_LIMIT = 10;
+const MAX_TOP_WORDS_LIMIT = 100;
 
 type SupabaseQueryResult<T = unknown> = {
   data?: T;
@@ -15,11 +19,19 @@ type SupabaseLike = {
       values: Record<string, string>,
       options: { onConflict: string; ignoreDuplicates: boolean },
     ) => Promise<SupabaseQueryResult>;
-    select: (
-      columns: string,
-      options: { count: "exact"; head: boolean },
-    ) => {
+    select: (columns: string, options?: { count: "exact"; head: boolean }) => {
       eq: (column: string, value: string) => Promise<SupabaseQueryResult>;
+      order: (
+        column: string,
+        options: { ascending: boolean },
+      ) => {
+        order: (
+          column: string,
+          options: { ascending: boolean },
+        ) => {
+          limit: (count: number) => Promise<SupabaseQueryResult<Array<{ word: string; visitor_count: number }>>>;
+        };
+      };
     };
   };
 };
@@ -74,6 +86,33 @@ export class WordVisitService {
 
     return countResult.count ?? 0;
   }
+
+  static async getTopVisitedWords(
+    limit = DEFAULT_TOP_WORDS_LIMIT,
+    options: { client?: SupabaseLike } = {},
+  ): Promise<TopVisitedWord[]> {
+    const client = options.client || supabase;
+
+    if (!client) {
+      throw new Error("Supabase is not configured");
+    }
+
+    const result = await client
+      .from(TOP_WORD_VISITS_VIEW)
+      .select("word, visitor_count")
+      .order("visitor_count", { ascending: false })
+      .order("word", { ascending: true })
+      .limit(normalizeTopWordsLimit(limit));
+
+    if (result.error) {
+      throw new Error(result.error.message || "Failed to fetch top visited words");
+    }
+
+    return (result.data || []).map((item) => ({
+      word: item.word,
+      visitorCount: item.visitor_count,
+    }));
+  }
 }
 
 export function normalizeWord(word: string): string {
@@ -88,6 +127,14 @@ export function hashVisitorId(visitorId: string | undefined): string | null {
   }
 
   return createHash("sha256").update(normalizedVisitorId).digest("hex");
+}
+
+export function normalizeTopWordsLimit(limit: number): number {
+  if (!Number.isFinite(limit) || limit <= 0) {
+    return DEFAULT_TOP_WORDS_LIMIT;
+  }
+
+  return Math.min(Math.floor(limit), MAX_TOP_WORDS_LIMIT);
 }
 
 function toVisitedDate(date: Date): string {

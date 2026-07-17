@@ -1,349 +1,208 @@
 # Indonesian Language & Quote Scraper API
 
-A modern REST API for Indonesian language and quote data, built with Node.js, Express 5, and TypeScript. It scrapes KBBI for structured dictionary definitions and Wikiquote for Indonesian proverbs plus Indonesian figure profiles, photos, descriptions, and quotes.
+A REST API for Indonesian language data built with Node.js, Express 5, and TypeScript. The service scrapes KBBI for dictionary definitions and Wikiquote for Indonesian proverbs plus Indonesian figure profiles, photos, descriptions, and quotes.
 
-## 🚀 Features
+## Features
 
-- **Modern Stack**: Built with Express 5, Axios, and Cheerio.
-- **TypeScript**: Fully typed for better developer experience and reliability.
-- **Clean Architecture**: Follows the Controller-Service pattern for maintainability.
-- **Structured Data**: Provides definitions, word classes (e.g., noun, verb), and headwords in a clean JSON format.
-- **Reliable Scraper**: Updated for the latest KBBI website structure with robust error handling.
-- **Proverb List**: Scrapes the Indonesian proverb list from Wikiquote and exposes it as JSON.
-- **Indonesian Figure List**: Scrapes Indonesian figure pages from Wikiquote and exposes nullable name, photo, description, and quotes fields.
+- KBBI word search with structured headwords, word classes, and definitions.
+- Anonymous word visit tracking using `X-Visitor-Id`.
+- Top visited words API backed by Supabase aggregation.
+- Paginated Indonesian proverb list, search, and detail endpoints.
+- Paginated Indonesian figure list, search, and detail endpoints.
+- Centralized error handling and request logging with Pino.
+- Controller-service architecture with focused Vitest coverage.
+- Vercel-compatible serverless deployment configuration.
 
-## 🛠 Installation
+## API Documentation
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/kbbi-api.git
-   cd kbbi-api
-   ```
+See [docs/API.md](docs/API.md) for the full endpoint reference, request parameters, headers, and response examples.
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+Quick examples:
 
-3. **Set up Environment Variables**:
-   Create a `.env` file in the root directory:
-   ```env
-   PORT=3000
-   BASE_URL=http://localhost:3000
-   ```
+```bash
+curl http://localhost:3000/search/demokrasi
+curl -H "X-Visitor-Id: anonymous-client-id" http://localhost:3000/search/demokrasi
+curl http://localhost:3000/words/top?limit=10
+curl "http://localhost:3000/proverb/search?q=air&page=1&limit=5"
+curl "http://localhost:3000/figure/search?q=soekarno"
+```
 
-4. **Build the project**:
-   ```bash
-   npm run build
-   ```
+## Requirements
 
-5. **Start the server**:
-   ```bash
-   # Development mode (with auto-reload)
-   npm run dev
+- Node.js compatible with the versions required by the dependencies in `package.json`.
+- npm.
+- Supabase project for word visit tracking and top visited words.
 
-   # Production mode
-   npm start
-   ```
+The scraping endpoints can run without Supabase, but word visit tracking and `/words/top` require Supabase configuration.
 
-## 📖 API Documentation
+## Environment Variables
 
-### Base URL
-`http://localhost:3000`
+Create a `.env` file in the project root:
 
-### Endpoints
+```env
+PORT=3000
+BASE_URL=http://localhost:3000
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+# Optional. Used before SUPABASE_ANON_KEY when present.
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-#### 1. Welcome / Info
-Returns basic information about the API.
+| Variable | Required | Description |
+| --- | --- | --- |
+| `PORT` | No | Server port. Defaults to `3000`. |
+| `BASE_URL` | No | Base URL used in the root endpoint examples. Defaults to `http://localhost:3000`. |
+| `SUPABASE_URL` | For visit tracking | Supabase project URL. |
+| `SUPABASE_ANON_KEY` | For visit tracking | Supabase anon key. |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Preferred Supabase key when provided. |
 
-- **URL**: `/`
-- **Method**: `GET`
-- **Success Response**:
-  - **Code**: 200 OK
-  - **Content**:
-    ```json
-    {
-      "message": "Welcome to New KBBI API",
-      "endpoints": ["/search/[word]", "/proverb", "/proverb/search", "/proverb/[slug]", "/figure", "/figure/search", "/figure/[slug]"],
-      "examples": [
-        "http://localhost:3000/search/demokrasi",
-        "http://localhost:3000/proverb?page=1&limit=20",
-        "http://localhost:3000/proverb/search?q=air",
-        "http://localhost:3000/proverb/Abu_saja_tak_hinggap",
-        "http://localhost:3000/figure?page=1&limit=10",
-        "http://localhost:3000/figure/search?q=soekarno",
-        "http://localhost:3000/figure/Soekarno"
-      ]
-    }
-    ```
+## Installation
 
-#### 2. Search Word
-Searches for a specific word in the KBBI database.
+```bash
+git clone https://github.com/your-username/kbbi-api.git
+cd kbbi-api
+npm install
+```
 
-- **URL**: `/search/:word`
-- **Method**: `GET`
-- **URL Params**:
-  - `word` (Required): The word to search for.
-- **Headers**:
-  - `X-Visitor-Id` (Optional): Stable anonymous UUID generated and stored by the mobile client. When present, the API counts one unique visit per word per visitor per day.
-- **Success Response**:
-  - **Code**: 200 OK
-  - **Content**:
-    ```json
-    {
-      "success": true,
-      "message": "Search successful",
-      "data": {
-        "word": "demokrasi",
-        "visitorCount": 12,
-        "entries": [
-          {
-            "headword": "de.mo.kra.si /démokrasi/",
-            "definitions": [
-              {
-                "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
-                "description": "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
-              },
-              {
-                "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
-                "description": "gagasan atau pandangan hidup yang mengutamakan persamaan hak and kewajiban serta perlakuan yang sama bagi semua warga negara"
-              }
-            ]
-          }
-        ]
-      }
-    }
-    ```
-  - `visitorCount` is `null` when `X-Visitor-Id` is missing or Supabase tracking is unavailable.
-- **Error Responses**:
-  - **404 Not Found**:
-    ```json
-    {
-      "success": false,
-      "message": "Word not found"
-    }
-    ```
-  - **500 Internal Server Error**:
-    ```json
-    {
-      "success": false,
-      "message": "Internal server error",
-      "error": "Error message details"
-    }
-    ```
+## Database Setup
 
-#### 3. List Proverbs
-Returns paginated Indonesian proverbs scraped from Wikiquote.
+### Hosted Supabase
 
-- **URL**: `/proverb`
-- **Method**: `GET`
-- **Query Params**:
-  - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
-  - `limit` (Optional): Items per page. Defaults to `20`, maximum `100`.
-- **Pagination Behavior**:
-  - Uses page/limit pagination.
-  - `total` is the total number of matching proverbs.
-  - `totalPages` is calculated from `total` and `limit`.
-  - `hasNextPage` and `hasPreviousPage` indicate whether adjacent pages are available.
-  - If `page` is greater than `totalPages`, `items` will be an empty array.
-- **Example**: `/proverb?page=1&limit=20`
-- **Success Response**:
-  - **Code**: 200 OK
-  - **Content**:
-    ```json
-    {
-      "success": true,
-      "message": "Proverb list fetched successfully",
-      "data": {
-        "source": "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
-        "pagination": {
-          "page": 1,
-          "limit": 20,
-          "total": 1371,
-          "totalPages": 69,
-          "hasNextPage": true,
-          "hasPreviousPage": false
-        },
-        "items": [
-          {
-            "text": "Ada gula ada semut",
-            "letter": "A",
-            "slug": "Ada_gula_ada_semut",
-            "sourceUrl": "https://id.wikiquote.org/wiki/Ada_gula_ada_semut"
-          }
-        ]
-      }
-    }
-    ```
+1. Create a Supabase project from the Supabase dashboard.
+2. Open **Project Settings** > **API**.
+3. Copy the project URL into `SUPABASE_URL`.
+4. Copy either the anon key into `SUPABASE_ANON_KEY` or the service role key into `SUPABASE_SERVICE_ROLE_KEY`.
+5. Open **SQL Editor** and run the migration files in this order:
 
-#### 4. Search Proverbs
-Searches proverbs by text and returns paginated results.
+```text
+supabase/migrations/001_create_word_visits.sql
+supabase/migrations/002_create_top_word_visits_view.sql
+```
 
-- **URL**: `/proverb/search`
-- **Method**: `GET`
-- **Query Params**:
-  - `q` (Required): Search keyword.
-  - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
-  - `limit` (Optional): Items per page. Defaults to `20`, maximum `100`.
-- **Example**: `/proverb/search?q=gula&page=1&limit=5`
-- **Success Response**:
-  - **Code**: 200 OK
-  - **Content**:
-    ```json
-    {
-      "success": true,
-      "message": "Proverb search successful",
-      "data": {
-        "source": "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
-        "pagination": {
-          "page": 1,
-          "limit": 5,
-          "total": 3,
-          "totalPages": 1,
-          "hasNextPage": false,
-          "hasPreviousPage": false
-        },
-        "items": [
-          {
-            "text": "Ada gula ada semut",
-            "letter": "A",
-            "slug": "Ada_gula_ada_semut",
-            "sourceUrl": "https://id.wikiquote.org/wiki/Ada_gula_ada_semut"
-          }
-        ]
-      }
-    }
-    ```
-- **Error Responses**:
-  - **400 Bad Request**:
-    ```json
-    {
-      "success": false,
-      "message": "Query parameter 'q' is required"
-    }
-    ```
+The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /words/top`.
 
-#### 5. Proverb Detail
-Returns a proverb and its meaning from the proverb detail page.
+### Local Supabase CLI
 
-- **URL**: `/proverb/:slug`
-- **Method**: `GET`
-- **URL Params**:
-  - `slug` (Required): Wikiquote page slug for the proverb. Use the `slug` returned from `/proverb` or `/proverb/search`.
-- **Example**: `/proverb/Abu_saja_tak_hinggap`
-- **Success Response**:
-  - **Code**: 200 OK
-  - **Content**:
-    ```json
-    {
-      "success": true,
-      "message": "Proverb detail fetched successfully",
-      "data": {
-        "text": "Abu saja tak hinggap",
-        "letter": "A",
-        "slug": "Abu_saja_tak_hinggap",
-        "sourceUrl": "https://id.wikiquote.org/wiki/Abu_saja_tak_hinggap",
-        "meaning": "sesuatu yang sangat bersih dan berkilau"
-      }
-    }
-    ```
-- **Error Responses**:
-  - **404 Not Found**:
-    ```json
-    {
-      "success": false,
-      "message": "Proverb not found"
-    }
-    ```
+This repository includes `supabase/config.toml` for local Supabase development.
 
-#### 6. List Indonesian Figures
-Returns paginated Indonesian figures scraped from Wikiquote. Each item includes detailed fields from the figure page.
+Start Supabase locally:
 
-- **URL**: `/figure`
-- **Method**: `GET`
-- **Query Params**:
-  - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
-  - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
-- **Example**: `/figure?page=1&limit=10`
-- **Success Response**:
-  - **Code**: 200 OK
-  - **Content**:
-    ```json
-    {
-      "success": true,
-      "message": "Indonesian figure list fetched successfully",
-      "data": {
-        "source": "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
-        "pagination": {
-          "page": 1,
-          "limit": 10,
-          "total": 346,
-          "totalPages": 35,
-          "hasNextPage": true,
-          "hasPreviousPage": false
-        },
-        "items": [
-          {
-            "name": "Soekarno",
-            "slug": "Soekarno",
-            "sourceUrl": "https://id.wikiquote.org/wiki/Soekarno",
-            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg",
-            "description": "Soekarno adalah presiden pertama Republik Indonesia yang menjabat pada kurun waktu 1945-1967.",
-            "quotes": [
-              "Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"
-            ]
-          }
-        ]
-      }
-    }
-    ```
+```bash
+supabase start
+```
 
-#### 7. Search Indonesian Figures
-Searches Indonesian figures by name and returns paginated detailed results.
+Reset the local database and apply migrations:
 
-- **URL**: `/figure/search`
-- **Method**: `GET`
-- **Query Params**:
-  - `q` (Required): Search keyword.
-  - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
-  - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
-- **Example**: `/figure/search?q=soekarno`
+```bash
+supabase db reset
+```
 
-#### 8. Indonesian Figure Detail
-Returns one Indonesian figure from a Wikiquote slug.
+Use the local API URL and anon key printed by `supabase start` in `.env`:
 
-- **URL**: `/figure/:slug`
-- **Method**: `GET`
-- **URL Params**:
-  - `slug` (Required): Wikiquote page slug, for example `Soekarno`.
-- **Example**: `/figure/Soekarno`
-- **Nullable Fields**:
-  - `name`, `photo`, `description`, and `quotes` may be `null` when Wikiquote does not provide that data.
-- **Error Responses**:
-  - **404 Not Found**:
-    ```json
-    {
-      "success": false,
-      "message": "Indonesian figure not found"
-    }
-    ```
+```env
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_ANON_KEY=your-local-anon-key
+```
 
-## 📂 Project Structure
+### Migration Files
+
+```text
+supabase/migrations/001_create_word_visits.sql
+supabase/migrations/002_create_top_word_visits_view.sql
+```
+
+The first migration creates `public.word_visits` and an index on `word`. The second migration creates `public.top_word_visits`, an aggregate view used by the top visited words endpoint.
+
+### Verify Supabase
+
+After configuring `.env` and starting the API, verify the connection:
+
+```bash
+curl http://localhost:3000/health/supabase
+```
+
+Then verify visit tracking by sending a stable visitor ID:
+
+```bash
+curl -H "X-Visitor-Id: local-test-user" http://localhost:3000/search/demokrasi
+curl http://localhost:3000/words/top?limit=10
+```
+
+## Development
+
+Start the development server with auto-reload:
+
+```bash
+npm run dev
+```
+
+The API will be available at `http://localhost:3000` unless `PORT` is changed.
+
+## Available Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the TypeScript development server with auto-reload. |
+| `npm run build` | Compile TypeScript into `dist/`. |
+| `npm start` | Run the compiled server from `dist/server.js`. |
+| `npm test` | Run the Vitest test suite. |
+
+## Testing
+
+Run all tests:
+
+```bash
+npm test
+```
+
+Run a production build check:
+
+```bash
+npm run build
+```
+
+The test suite covers parser fixtures, controller behavior, error responses, word visit tracking, and top visited words behavior.
+
+## Project Structure
 
 ```text
 src/
-├── config/             # Configuration and environment variables
-├── controllers/        # Request handling and response logic
-├── interfaces/         # TypeScript interfaces and types
+├── config/             # Environment and Supabase configuration
+├── controllers/        # Express request handlers
+├── interfaces/         # TypeScript response and domain types
+├── lib/                # Shared HTTP, logging, and async utilities
+├── middlewares/        # Request logging and error handling
 ├── routes/             # API route definitions
-├── services/           # Business logic and scraping logic
+├── services/           # Scraping, parsing, and persistence logic
 ├── app.ts              # Express application setup
 └── server.ts           # Server entry point
+
+docs/
+└── API.md              # Endpoint reference
+
+supabase/
+└── migrations/         # Database schema and view migrations
+
+test/
+├── fixtures/           # HTML parser fixtures
+└── *.test.ts           # Vitest tests
 ```
 
-## ⚖️ License
+## Deployment
+
+The repository includes `vercel.json` configured to route all requests to `src/server.ts` with `@vercel/node`.
+
+For production deployment:
+
+1. Configure the environment variables in the hosting provider.
+2. Apply Supabase migrations.
+3. Deploy the app.
+4. Confirm `GET /health/supabase` reports the expected Supabase connection status.
+
+## Visit Tracking Behavior
+
+Clients may send `X-Visitor-Id` when calling `GET /search/:word`. The API hashes this value before storage and counts one unique visit per word, visitor, and day. Search responses include `visitorCount`; it is `null` when the header is missing or Supabase tracking is unavailable.
+
+## License
 
 This project is licensed under the ISC License.
-
----
-Built with ❤️ 
