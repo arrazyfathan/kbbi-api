@@ -8,6 +8,12 @@ export interface Entry {
   definitions: Definition[];
 }
 
+export interface KbbiSearchResult {
+  word: string;
+  visitorCount: number | null;
+  entries: Entry[];
+}
+
 export interface Proverb {
   text: string;
   letter: string;

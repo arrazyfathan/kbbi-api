@@ -84,6 +84,8 @@ Searches for a specific word in the KBBI database.
 - **Method**: `GET`
 - **URL Params**:
   - `word` (Required): The word to search for.
+- **Headers**:
+  - `X-Visitor-Id` (Optional): Stable anonymous UUID generated and stored by the mobile client. When present, the API counts one unique visit per word per visitor per day.
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -91,23 +93,28 @@ Searches for a specific word in the KBBI database.
     {
       "success": true,
       "message": "Search successful",
-      "data": [
-        {
-          "headword": "de.mo.kra.si /démokrasi/",
-          "definitions": [
-            {
-              "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
-              "description": "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
-            },
-            {
-              "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
-              "description": "gagasan atau pandangan hidup yang mengutamakan persamaan hak and kewajiban serta perlakuan yang sama bagi semua warga negara"
-            }
-          ]
-        }
-      ]
+      "data": {
+        "word": "demokrasi",
+        "visitorCount": 12,
+        "entries": [
+          {
+            "headword": "de.mo.kra.si /démokrasi/",
+            "definitions": [
+              {
+                "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
+                "description": "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
+              },
+              {
+                "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
+                "description": "gagasan atau pandangan hidup yang mengutamakan persamaan hak and kewajiban serta perlakuan yang sama bagi semua warga negara"
+              }
+            ]
+          }
+        ]
+      }
     }
     ```
+  - `visitorCount` is `null` when `X-Visitor-Id` is missing or Supabase tracking is unavailable.
 - **Error Responses**:
   - **404 Not Found**:
     ```json
