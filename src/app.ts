@@ -4,12 +4,14 @@ import apiRouter from "./routes/api.routes";
 import logger from "./lib/logger";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { requestLoggerMiddleware } from "./middlewares/request-logger.middleware";
+import { globalRateLimiter } from "./middlewares/rate-limit.middleware";
 
 class App {
   public app: Application;
 
   constructor() {
     this.app = express();
+    this.app.set("trust proxy", 1);
     this.initializeMiddlewares();
     this.initializeRoutes();
     this.initializeErrorHandling();
@@ -27,6 +29,7 @@ class App {
     this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+    this.app.use(globalRateLimiter);
   }
 
   private initializeRoutes() {

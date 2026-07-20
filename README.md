@@ -10,6 +10,7 @@ A REST API for Indonesian language data built with Node.js, Express 5, and TypeS
 - Paginated Indonesian proverb list, search, and detail endpoints.
 - Paginated Indonesian figure list, search, and detail endpoints.
 - Centralized error handling and request logging with Pino.
+- IP-based rate limiting for public routes and stricter scraper-backed search endpoints.
 - Controller-service architecture with focused Vitest coverage.
 - Vercel-compatible serverless deployment configuration.
 
@@ -42,19 +43,27 @@ Create a `.env` file in the project root:
 ```env
 PORT=3000
 BASE_URL=http://localhost:3000
+RATE_LIMIT_GLOBAL_WINDOW_MS=900000
+RATE_LIMIT_GLOBAL_MAX=300
+RATE_LIMIT_SCRAPER_WINDOW_MS=900000
+RATE_LIMIT_SCRAPER_MAX=30
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 # Optional. Used before SUPABASE_ANON_KEY when present.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-| Variable                    | Required           | Description                                                                       |
-| --------------------------- | ------------------ | --------------------------------------------------------------------------------- |
-| `PORT`                      | No                 | Server port. Defaults to `3000`.                                                  |
-| `BASE_URL`                  | No                 | Base URL used in the root endpoint examples. Defaults to `http://localhost:3000`. |
-| `SUPABASE_URL`              | For visit tracking | Supabase project URL.                                                             |
-| `SUPABASE_ANON_KEY`         | For visit tracking | Supabase anon key.                                                                |
-| `SUPABASE_SERVICE_ROLE_KEY` | No                 | Preferred Supabase key when provided.                                             |
+| Variable                       | Required           | Description                                                                                     |
+| ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
+| `PORT`                         | No                 | Server port. Defaults to `3000`.                                                                |
+| `BASE_URL`                     | No                 | Base URL used in the root endpoint examples. Defaults to `http://localhost:3000`.               |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                  |
+| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Global request limit per IP per window. Defaults to `300`.                                      |
+| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes). |
+| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Scraper/search request limit per IP per window. Defaults to `30`.                               |
+| `SUPABASE_URL`                 | For visit tracking | Supabase project URL.                                                                           |
+| `SUPABASE_ANON_KEY`            | For visit tracking | Supabase anon key.                                                                              |
+| `SUPABASE_SERVICE_ROLE_KEY`    | No                 | Preferred Supabase key when provided.                                                           |
 
 ## Installation
 
@@ -137,6 +146,27 @@ npm run dev
 ```
 
 The API will be available at `http://localhost:3000` unless `PORT` is changed.
+
+## Rate Limiting
+
+The API applies a loose global limit to all routes and a stricter limit to scraper-backed search routes. By default, each IP can make `300` total requests per `15` minutes and `30` requests per `15` minutes to these endpoints:
+
+```text
+GET /search/:word
+GET /proverb/search
+GET /figure/search
+```
+
+Requests over the limit return HTTP `429`:
+
+```json
+{
+  "success": false,
+  "message": "Too many requests"
+}
+```
+
+Standard `RateLimit` headers are included where supported. The default limiter uses in-memory storage, so limits are tracked per Node.js process or serverless runtime instance.
 
 ## Available Scripts
 

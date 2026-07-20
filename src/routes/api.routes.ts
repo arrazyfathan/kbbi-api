@@ -6,6 +6,7 @@ import KbbiController from "../controllers/kbbi.controller";
 import ProverbController from "../controllers/proverb.controller";
 import WordController from "../controllers/word.controller";
 import { asyncHandler } from "../lib/async-handler";
+import { scraperRateLimiter } from "../middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -38,13 +39,13 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 router.get("/health/supabase", asyncHandler(HealthController.supabase));
-router.get("/search/:word", asyncHandler(KbbiController.search));
+router.get("/search/:word", scraperRateLimiter, asyncHandler(KbbiController.search));
 router.get("/words/top", asyncHandler(WordController.topVisited));
 router.get("/proverb", asyncHandler(ProverbController.list));
-router.get("/proverb/search", asyncHandler(ProverbController.search));
+router.get("/proverb/search", scraperRateLimiter, asyncHandler(ProverbController.search));
 router.get("/proverb/:slug", asyncHandler(ProverbController.detail));
 router.get("/figure", asyncHandler(IndonesianFigureController.list));
-router.get("/figure/search", asyncHandler(IndonesianFigureController.search));
+router.get("/figure/search", scraperRateLimiter, asyncHandler(IndonesianFigureController.search));
 router.get("/figure/:slug", asyncHandler(IndonesianFigureController.detail));
 
 export default router;
