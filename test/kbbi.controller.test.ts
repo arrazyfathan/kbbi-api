@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import KbbiController from "../src/controllers/kbbi.controller";
+import { API_ERROR_CODES } from "../src/lib/api-error";
 import { KbbiService } from "../src/services/kbbi.service";
 import { WordVisitService } from "../src/services/word-visit.service";
 
@@ -105,35 +106,42 @@ describe("KbbiController.search", () => {
   it("does not track visits for words that are not found", async () => {
     vi.mocked(KbbiService.search).mockResolvedValueOnce(null);
 
-    const { req, res, body } = createRequestResponse({
+    const { req, res } = createRequestResponse({
       params: { word: "notfound" },
       headers: { "x-visitor-id": "mobile-visitor-1" },
     });
 
-    await KbbiController.search(req, res);
-
-    expect(WordVisitService.trackWordVisit).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(KbbiController.search(req, res)).rejects.toMatchObject({
+      statusCode: 404,
+      code: API_ERROR_CODES.NOT_FOUND,
       message: "Word not found",
     });
+
+    expect(WordVisitService.trackWordVisit).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("returns 400 when word is blank", async () => {
-    const { req, res, body } = createRequestResponse({
+    const { req, res } = createRequestResponse({
       params: { word: "   " },
     });
 
-    await KbbiController.search(req, res);
+    await expect(KbbiController.search(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
+      message: "Parameter 'word' is required and must be a string",
+      details: [
+        {
+          field: "word",
+          location: "params",
+          reason: "Required non-empty string",
+        },
+      ],
+    });
 
     expect(KbbiService.search).not.toHaveBeenCalled();
     expect(WordVisitService.trackWordVisit).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
-      message: "Parameter 'word' is required and must be a string",
-    });
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 

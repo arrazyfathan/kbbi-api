@@ -4,6 +4,48 @@
 
 `http://localhost:3000`
 
+## Error Response Contract
+
+All API error responses include a stable error code:
+
+```json
+{
+  "success": false,
+  "message": "Human-readable error message",
+  "code": "VALIDATION_ERROR"
+}
+```
+
+Validation errors include `details` when useful:
+
+```json
+{
+  "success": false,
+  "message": "Query parameter 'q' is required",
+  "code": "VALIDATION_ERROR",
+  "details": [
+    {
+      "field": "q",
+      "location": "query",
+      "reason": "Required non-empty string"
+    }
+  ]
+}
+```
+
+Public error codes:
+
+| Code                   | Typical HTTP Status | Description                                              |
+| ---------------------- | ------------------- | -------------------------------------------------------- |
+| `VALIDATION_ERROR`     | 400                 | Request params, query, or body values are invalid.       |
+| `NOT_FOUND`            | 404                 | The requested endpoint or resource was not found.        |
+| `RATE_LIMITED`         | 429                 | The request exceeded the configured rate limit.          |
+| `UPSTREAM_TIMEOUT`     | 504                 | A scraper or external service timed out.                 |
+| `UPSTREAM_UNAVAILABLE` | 502 or 503          | A scraper, Supabase, or external service is unavailable. |
+| `INTERNAL_ERROR`       | 500                 | An unexpected server error occurred.                     |
+
+Production internal errors intentionally use a generic message and do not expose private exception details.
+
 ## Endpoints
 
 ### 1. Welcome / Info
@@ -85,7 +127,8 @@ Searches for a specific word in the KBBI database.
     ```json
     {
       "success": false,
-      "message": "Word not found"
+      "message": "Word not found",
+      "code": "NOT_FOUND"
     }
     ```
   - **500 Internal Server Error**:
@@ -93,7 +136,7 @@ Searches for a specific word in the KBBI database.
     {
       "success": false,
       "message": "Internal server error",
-      "error": "Error message details"
+      "code": "INTERNAL_ERROR"
     }
     ```
 
@@ -218,7 +261,15 @@ Searches proverbs by text and returns paginated results.
     ```json
     {
       "success": false,
-      "message": "Query parameter 'q' is required"
+      "message": "Query parameter 'q' is required",
+      "code": "VALIDATION_ERROR",
+      "details": [
+        {
+          "field": "q",
+          "location": "query",
+          "reason": "Required non-empty string"
+        }
+      ]
     }
     ```
 
@@ -252,7 +303,8 @@ Returns a proverb and its meaning from the proverb detail page.
     ```json
     {
       "success": false,
-      "message": "Proverb not found"
+      "message": "Proverb not found",
+      "code": "NOT_FOUND"
     }
     ```
 
@@ -325,6 +377,7 @@ Returns one Indonesian figure from a Wikiquote slug.
     ```json
     {
       "success": false,
-      "message": "Indonesian figure not found"
+      "message": "Indonesian figure not found",
+      "code": "NOT_FOUND"
     }
     ```

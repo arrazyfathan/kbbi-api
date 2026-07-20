@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import config from "../config";
+import { rateLimitedError } from "../lib/api-error";
 
 type RateLimitConfig = {
   windowMs: number;
@@ -18,9 +19,12 @@ export function createRateLimiter(options: RateLimitConfig) {
 }
 
 export function rateLimitHandler(req: Request, res: Response) {
+  const error = rateLimitedError();
+
   res.status(429).json({
     success: false,
-    message: "Too many requests",
+    message: error.message,
+    code: error.code,
   });
 }
 

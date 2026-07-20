@@ -1,15 +1,5 @@
 import { z } from "zod";
-import { ApiResponse } from "../interfaces/kbbi.interface";
-
-type ValidationResult<T> =
-  | {
-      success: true;
-      data: T;
-    }
-  | {
-      success: false;
-      response: ApiResponse<never>;
-    };
+import { validationError } from "./api-error";
 
 type PaginationOptions = {
   maxLimit: number;
@@ -27,86 +17,77 @@ const requiredStringSchema = z.string().trim().min(1);
 export function parsePaginationParams(
   query: { page?: unknown; limit?: unknown },
   options: PaginationOptions,
-): ValidationResult<PaginationParams> {
+): PaginationParams {
   const page = parsePositiveIntegerParam(query.page, {
     name: "page",
+    location: "query",
     defaultValue: options.defaultPage ?? 1,
   });
 
-  if (!page.success) {
-    return page;
-  }
-
   const limit = parsePositiveIntegerParam(query.limit, {
     name: "limit",
+    location: "query",
     defaultValue: options.defaultLimit ?? 20,
     maxValue: options.maxLimit,
   });
 
-  if (!limit.success) {
-    return limit;
-  }
-
   return {
-    success: true,
-    data: {
-      page: page.data,
-      limit: limit.data,
-    },
+    page,
+    limit,
   };
 }
 
-export function parseRequiredQuery(value: unknown, name: string): ValidationResult<string> {
+export function parseRequiredQuery(value: unknown, name: string): string {
   const parsed = requiredStringSchema.safeParse(value);
 
   if (!parsed.success) {
-    return invalidRequest(`Query parameter '${name}' is required`);
+    throw invalidRequest(`Query parameter '${name}' is required`, {
+      field: name,
+      location: "query",
+      reason: "Required non-empty string",
+    });
   }
 
-  return {
-    success: true,
-    data: parsed.data,
-  };
+  return parsed.data;
 }
 
-export function parseWordParam(value: unknown): ValidationResult<{ word: string; normalizedWord: string }> {
+export function parseWordParam(value: unknown): { word: string; normalizedWord: string } {
   const parsed = requiredStringSchema.safeParse(value);
 
   if (!parsed.success) {
-    return invalidRequest("Parameter 'word' is required and must be a string");
+    throw invalidRequest("Parameter 'word' is required and must be a string", {
+      field: "word",
+      location: "params",
+      reason: "Required non-empty string",
+    });
   }
 
   return {
-    success: true,
-    data: {
-      word: parsed.data,
-      normalizedWord: parsed.data.toLocaleLowerCase("id-ID"),
-    },
+    word: parsed.data,
+    normalizedWord: parsed.data.toLocaleLowerCase("id-ID"),
   };
 }
 
-export function parseSlugParam(value: unknown): ValidationResult<string> {
+export function parseSlugParam(value: unknown): string {
   const parsed = requiredStringSchema.transform((slug) => slug.replace(/\s+/g, "_")).safeParse(value);
 
   if (!parsed.success) {
-    return invalidRequest("Parameter 'slug' is required and must be a string");
+    throw invalidRequest("Parameter 'slug' is required and must be a string", {
+      field: "slug",
+      location: "params",
+      reason: "Required non-empty string",
+    });
   }
 
-  return {
-    success: true,
-    data: parsed.data,
-  };
+  return parsed.data;
 }
 
 function parsePositiveIntegerParam(
   value: unknown,
-  options: { name: string; defaultValue: number; maxValue?: number },
-): ValidationResult<number> {
+  options: { name: string; location: "query"; defaultValue: number; maxValue?: number },
+): number {
   if (value === undefined) {
-    return {
-      success: true,
-      data: options.defaultValue,
-    };
+    return options.defaultValue;
   }
 
   const parsed = z
@@ -125,21 +106,16 @@ function parsePositiveIntegerParam(
 
   if (!parsed.success) {
     const maxMessage = options.maxValue ? ` and must be less than or equal to ${options.maxValue}` : "";
-    return invalidRequest(`Query parameter '${options.name}' must be a positive integer${maxMessage}`);
+    throw invalidRequest(`Query parameter '${options.name}' must be a positive integer${maxMessage}`, {
+      field: options.name,
+      location: options.location,
+      reason: `Must be a positive integer${maxMessage}`,
+    });
   }
 
-  return {
-    success: true,
-    data: parsed.data,
-  };
+  return parsed.data;
 }
 
-function invalidRequest(message: string): ValidationResult<never> {
-  return {
-    success: false,
-    response: {
-      success: false,
-      message,
-    },
-  };
+function invalidRequest(message: string, detail: { field: string; location: "params" | "query"; reason: string }) {
+  return validationError(message, [detail]);
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import IndonesianFigureController from "../src/controllers/indonesian-figure.controller";
+import { API_ERROR_CODES } from "../src/lib/api-error";
 import { IndonesianFigureService } from "../src/services/indonesian-figure.service";
 
 vi.mock("../src/services/indonesian-figure.service", () => ({
@@ -27,29 +28,29 @@ describe("IndonesianFigureController", () => {
   });
 
   it("rejects invalid list pagination before calling the service", async () => {
-    const { req, res, body } = createRequestResponse({ query: { limit: "abc" } });
+    const { req, res } = createRequestResponse({ query: { limit: "abc" } });
 
-    await IndonesianFigureController.list(req, res);
-
-    expect(IndonesianFigureService.list).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(IndonesianFigureController.list(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Query parameter 'limit' must be a positive integer and must be less than or equal to 50",
     });
+
+    expect(IndonesianFigureService.list).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("rejects figure limits above 50", async () => {
-    const { req, res, body } = createRequestResponse({ query: { limit: "51" } });
+    const { req, res } = createRequestResponse({ query: { limit: "51" } });
 
-    await IndonesianFigureController.list(req, res);
-
-    expect(IndonesianFigureService.list).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(IndonesianFigureController.list(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Query parameter 'limit' must be a positive integer and must be less than or equal to 50",
     });
+
+    expect(IndonesianFigureService.list).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("passes trimmed search query and validated pagination to search", async () => {
@@ -64,16 +65,16 @@ describe("IndonesianFigureController", () => {
   });
 
   it("still returns 400 when q is blank", async () => {
-    const { req, res, body } = createRequestResponse({ query: { q: "   " } });
+    const { req, res } = createRequestResponse({ query: { q: "   " } });
 
-    await IndonesianFigureController.search(req, res);
-
-    expect(IndonesianFigureService.search).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(IndonesianFigureController.search(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Query parameter 'q' is required",
     });
+
+    expect(IndonesianFigureService.search).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("passes normalized slugs to detail", async () => {
@@ -92,6 +93,20 @@ describe("IndonesianFigureController", () => {
 
     expect(IndonesianFigureService.detail).toHaveBeenCalledWith("Cut_Nyak_Dien");
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("throws a not found error when figure detail is missing", async () => {
+    vi.mocked(IndonesianFigureService.detail).mockResolvedValueOnce(null);
+
+    const { req, res } = createRequestResponse({ params: { slug: "missing" } });
+
+    await expect(IndonesianFigureController.detail(req, res)).rejects.toMatchObject({
+      statusCode: 404,
+      code: API_ERROR_CODES.NOT_FOUND,
+      message: "Indonesian figure not found",
+    });
+
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 

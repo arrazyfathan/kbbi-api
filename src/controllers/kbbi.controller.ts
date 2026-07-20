@@ -4,25 +4,16 @@ import { ApiResponse, KbbiSearchResult } from "../interfaces/kbbi.interface";
 import { WordVisitService } from "../services/word-visit.service";
 import { parseWordParam } from "../lib/request-validation";
 import logger from "../lib/logger";
+import { notFoundError } from "../lib/api-error";
 
 export default class KbbiController {
   static async search(req: Request, res: Response<ApiResponse<KbbiSearchResult>>): Promise<void> {
     const word = parseWordParam(req.params.word);
-
-    if (!word.success) {
-      res.status(400).json(word.response);
-      return;
-    }
-
-    const { normalizedWord } = word.data;
-    const results = await KbbiService.search(word.data.word);
+    const { normalizedWord } = word;
+    const results = await KbbiService.search(word.word);
 
     if (!results) {
-      res.status(404).json({
-        success: false,
-        message: "Word not found",
-      });
-      return;
+      throw notFoundError("Word not found");
     }
 
     const visitorCount = await trackVisitorCount(normalizedWord, getVisitorId(req));

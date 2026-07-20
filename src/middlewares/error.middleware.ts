@@ -1,5 +1,6 @@
 import { ErrorRequestHandler, Request } from "express";
 import { ApiResponse } from "../interfaces/kbbi.interface";
+import { API_ERROR_CODES, isApiError } from "../lib/api-error";
 import { isUpstreamHttpError } from "../lib/http-client";
 import logger from "../lib/logger";
 
@@ -10,13 +11,27 @@ export function buildErrorResponse(
   statusCode: number;
   body: ApiResponse<never>;
 } {
-  if (isUpstreamHttpError(error)) {
+  if (isApiError(error)) {
     return {
       statusCode: error.statusCode,
       body: {
         success: false,
         message: error.message,
-        ...(nodeEnv !== "production" ? { error: error.message } : {}),
+        code: error.code,
+        ...(error.details ? { details: error.details } : {}),
+      },
+    };
+  }
+
+  if (isUpstreamHttpError(error)) {
+    const code = error.statusCode === 504 ? API_ERROR_CODES.UPSTREAM_TIMEOUT : API_ERROR_CODES.UPSTREAM_UNAVAILABLE;
+
+    return {
+      statusCode: error.statusCode,
+      body: {
+        success: false,
+        message: error.message,
+        code,
       },
     };
   }
@@ -29,6 +44,7 @@ export function buildErrorResponse(
     body: {
       success: false,
       message,
+      code: API_ERROR_CODES.INTERNAL_ERROR,
       ...(nodeEnv !== "production" ? { error: detail } : {}),
     },
   };

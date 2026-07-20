@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { supabase } from "../config/supabase";
 import { TopVisitedWord } from "../interfaces/kbbi.interface";
+import { upstreamUnavailableError } from "../lib/api-error";
 
 const WORD_VISITS_TABLE = "word_visits";
 const TOP_WORD_VISITS_VIEW = "top_word_visits";
@@ -55,7 +56,7 @@ export class WordVisitService {
     const client = options.client || supabase;
 
     if (!client) {
-      throw new Error("Supabase is not configured");
+      throw upstreamUnavailableError("Supabase service is unavailable");
     }
 
     const visitedDate = toVisitedDate(options.now || new Date());
@@ -73,7 +74,7 @@ export class WordVisitService {
     );
 
     if (insertResult.error) {
-      throw new Error(insertResult.error.message || "Failed to record word visit");
+      throw upstreamUnavailableError("Supabase service is unavailable", insertResult.error);
     }
 
     const countResult = await client
@@ -82,7 +83,7 @@ export class WordVisitService {
       .eq("word", normalizedWord);
 
     if (countResult.error) {
-      throw new Error(countResult.error.message || "Failed to count word visits");
+      throw upstreamUnavailableError("Supabase service is unavailable", countResult.error);
     }
 
     return countResult.count ?? 0;
@@ -95,7 +96,7 @@ export class WordVisitService {
     const client = options.client || supabase;
 
     if (!client) {
-      throw new Error("Supabase is not configured");
+      throw upstreamUnavailableError("Supabase service is unavailable");
     }
 
     const result = await client
@@ -106,7 +107,7 @@ export class WordVisitService {
       .limit(normalizeTopWordsLimit(limit));
 
     if (result.error) {
-      throw new Error(result.error.message || "Failed to fetch top visited words");
+      throw upstreamUnavailableError("Supabase service is unavailable", result.error);
     }
 
     return (result.data || []).map((item) => ({

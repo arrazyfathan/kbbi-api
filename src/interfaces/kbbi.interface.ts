@@ -1,3 +1,5 @@
+import type { ApiErrorCode, ApiErrorDetails } from "../lib/api-error";
+
 export interface Definition {
   wordClass: string;
   description: string;
@@ -84,5 +86,7 @@ export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data?: T;
+  code?: ApiErrorCode;
+  details?: ApiErrorDetails;
   error?: string;
 }

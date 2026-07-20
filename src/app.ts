@@ -1,10 +1,11 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import apiRouter from "./routes/api.routes";
 import logger from "./lib/logger";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { requestLoggerMiddleware } from "./middlewares/request-logger.middleware";
 import { globalRateLimiter } from "./middlewares/rate-limit.middleware";
+import { notFoundError } from "./lib/api-error";
 
 class App {
   public app: Application;
@@ -37,11 +38,8 @@ class App {
   }
 
   private initializeErrorHandling() {
-    this.app.use((req: Request, res: Response) => {
-      res.status(404).json({
-        success: false,
-        message: "Endpoint not found",
-      });
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      next(notFoundError("Endpoint not found"));
     });
     this.app.use(errorMiddleware);
   }

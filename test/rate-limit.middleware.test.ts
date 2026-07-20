@@ -1,5 +1,6 @@
 import { NextFunction, Request, RequestHandler, Response } from "express";
 import { describe, expect, it } from "vitest";
+import { API_ERROR_CODES } from "../src/lib/api-error";
 import { createRateLimiter } from "../src/middlewares/rate-limit.middleware";
 
 describe("rate limiting middleware", () => {
@@ -24,6 +25,7 @@ describe("rate limiting middleware", () => {
     expect(response.body).toEqual({
       success: false,
       message: "Too many requests",
+      code: API_ERROR_CODES.RATE_LIMITED,
     });
     expect(response.headers.ratelimit).toBeDefined();
     expect(response.headers["retry-after"]).toBeDefined();
@@ -41,6 +43,7 @@ describe("rate limiting middleware", () => {
     expect(blockedSearch.body).toEqual({
       success: false,
       message: "Too many requests",
+      code: API_ERROR_CODES.RATE_LIMITED,
     });
 
     expect((await runRoute([globalLimiter], "/words/top")).statusCode).toBe(200);

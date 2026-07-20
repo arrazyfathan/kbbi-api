@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProverbController from "../src/controllers/proverb.controller";
+import { API_ERROR_CODES } from "../src/lib/api-error";
 import { ProverbService } from "../src/services/proverb.service";
 
 vi.mock("../src/services/proverb.service", () => ({
@@ -27,29 +28,29 @@ describe("ProverbController", () => {
   });
 
   it("rejects invalid list pagination before calling the service", async () => {
-    const { req, res, body } = createRequestResponse({ query: { page: "0" } });
+    const { req, res } = createRequestResponse({ query: { page: "0" } });
 
-    await ProverbController.list(req, res);
-
-    expect(ProverbService.list).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(ProverbController.list(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Query parameter 'page' must be a positive integer",
     });
+
+    expect(ProverbService.list).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("rejects proverb limits above 100", async () => {
-    const { req, res, body } = createRequestResponse({ query: { limit: "101" } });
+    const { req, res } = createRequestResponse({ query: { limit: "101" } });
 
-    await ProverbController.list(req, res);
-
-    expect(ProverbService.list).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(ProverbController.list(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Query parameter 'limit' must be a positive integer and must be less than or equal to 100",
     });
+
+    expect(ProverbService.list).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("passes trimmed search query and validated pagination to search", async () => {
@@ -64,16 +65,16 @@ describe("ProverbController", () => {
   });
 
   it("still returns 400 when q is missing", async () => {
-    const { req, res, body } = createRequestResponse({ query: {} });
+    const { req, res } = createRequestResponse({ query: {} });
 
-    await ProverbController.search(req, res);
-
-    expect(ProverbService.search).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(body.value).toEqual({
-      success: false,
+    await expect(ProverbController.search(req, res)).rejects.toMatchObject({
+      statusCode: 400,
+      code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Query parameter 'q' is required",
     });
+
+    expect(ProverbService.search).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it("passes normalized slugs to detail", async () => {
@@ -91,6 +92,20 @@ describe("ProverbController", () => {
 
     expect(ProverbService.detail).toHaveBeenCalledWith("Ada_gula_ada_semut");
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("throws a not found error when proverb detail is missing", async () => {
+    vi.mocked(ProverbService.detail).mockResolvedValueOnce(null);
+
+    const { req, res } = createRequestResponse({ params: { slug: "missing" } });
+
+    await expect(ProverbController.detail(req, res)).rejects.toMatchObject({
+      statusCode: 404,
+      code: API_ERROR_CODES.NOT_FOUND,
+      message: "Proverb not found",
+    });
+
+    expect(res.status).not.toHaveBeenCalled();
   });
 });
 

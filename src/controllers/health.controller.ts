@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { checkSupabaseConnection } from "../config/supabase";
 import { ApiResponse } from "../interfaces/kbbi.interface";
+import { API_ERROR_CODES } from "../lib/api-error";
 
 interface SupabaseHealth {
   connected: boolean;
@@ -17,13 +18,14 @@ export default class HealthController {
     res.status(statusCode).json({
       success: result.connected,
       message: result.connected ? "Supabase connection successful" : "Supabase connection failed",
+      ...(!result.connected ? { code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE } : {}),
       data: {
         connected: result.connected,
         host: result.host,
         status: result.status,
         statusText: result.statusText,
       },
-      error: result.error,
+      ...(process.env.NODE_ENV !== "production" && result.error ? { error: result.error } : {}),
     });
   }
 }

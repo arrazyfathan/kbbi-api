@@ -1,18 +1,13 @@
 import { Request, Response } from "express";
 import { ApiResponse, PaginatedProverbList, ProverbDetail } from "../interfaces/kbbi.interface";
 import { parsePaginationParams, parseRequiredQuery, parseSlugParam } from "../lib/request-validation";
+import { notFoundError } from "../lib/api-error";
 import { ProverbService } from "../services/proverb.service";
 
 export default class ProverbController {
   static async list(req: Request, res: Response<ApiResponse<PaginatedProverbList>>): Promise<void> {
     const pagination = parsePaginationParams(req.query, { maxLimit: 100 });
-
-    if (!pagination.success) {
-      res.status(400).json(pagination.response);
-      return;
-    }
-
-    const { page, limit } = pagination.data;
+    const { page, limit } = pagination;
     const results = await ProverbService.list(page, limit);
 
     res.status(200).json({
@@ -24,21 +19,10 @@ export default class ProverbController {
 
   static async search(req: Request, res: Response<ApiResponse<PaginatedProverbList>>): Promise<void> {
     const query = parseRequiredQuery(req.query.q, "q");
-
-    if (!query.success) {
-      res.status(400).json(query.response);
-      return;
-    }
-
     const pagination = parsePaginationParams(req.query, { maxLimit: 100 });
 
-    if (!pagination.success) {
-      res.status(400).json(pagination.response);
-      return;
-    }
-
-    const { page, limit } = pagination.data;
-    const results = await ProverbService.search(query.data, page, limit);
+    const { page, limit } = pagination;
+    const results = await ProverbService.search(query, page, limit);
 
     res.status(200).json({
       success: true,
@@ -49,20 +33,10 @@ export default class ProverbController {
 
   static async detail(req: Request, res: Response<ApiResponse<ProverbDetail>>): Promise<void> {
     const slug = parseSlugParam(req.params.slug);
-
-    if (!slug.success) {
-      res.status(400).json(slug.response);
-      return;
-    }
-
-    const result = await ProverbService.detail(slug.data);
+    const result = await ProverbService.detail(slug);
 
     if (!result) {
-      res.status(404).json({
-        success: false,
-        message: "Proverb not found",
-      });
-      return;
+      throw notFoundError("Proverb not found");
     }
 
     res.status(200).json({

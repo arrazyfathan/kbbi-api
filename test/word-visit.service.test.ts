@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { API_ERROR_CODES } from "../src/lib/api-error";
 import {
   hashVisitorId,
   normalizeTopWordsLimit,
@@ -52,9 +53,11 @@ describe("WordVisitService", () => {
   it("throws when Supabase cannot record the visit", async () => {
     const client = createSupabaseMock({ upsertError: "insert failed" });
 
-    await expect(WordVisitService.trackWordVisit("demokrasi", "visitor-1", { client })).rejects.toThrow(
-      "insert failed",
-    );
+    await expect(WordVisitService.trackWordVisit("demokrasi", "visitor-1", { client })).rejects.toMatchObject({
+      statusCode: 502,
+      code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+      message: "Supabase service is unavailable",
+    });
   });
 
   it("fetches top visited words ordered by visitor count and word", async () => {
@@ -91,7 +94,11 @@ describe("WordVisitService", () => {
   it("throws when Supabase cannot fetch top visited words", async () => {
     const client = createTopWordsSupabaseMock({ error: "view unavailable" });
 
-    await expect(WordVisitService.getTopVisitedWords(10, { client })).rejects.toThrow("view unavailable");
+    await expect(WordVisitService.getTopVisitedWords(10, { client })).rejects.toMatchObject({
+      statusCode: 502,
+      code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+      message: "Supabase service is unavailable",
+    });
   });
 });
 
