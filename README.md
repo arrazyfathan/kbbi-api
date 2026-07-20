@@ -147,6 +147,12 @@ npm run dev
 
 The API will be available at `http://localhost:3000` unless `PORT` is changed.
 
+Before opening a pull request, run the full local quality gate:
+
+```bash
+npm run check
+```
+
 ## Rate Limiting
 
 The API applies a loose global limit to all routes and a stricter limit to scraper-backed search routes. By default, each IP can make `300` total requests per `15` minutes and `30` requests per `15` minutes to these endpoints:
