@@ -1,6 +1,7 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import apiRouter from "./routes/api.routes";
+import config from "./config";
 import logger from "./lib/logger";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { requestLoggerMiddleware } from "./middlewares/request-logger.middleware";
@@ -19,7 +20,7 @@ class App {
   }
 
   public listen() {
-    const port = process.env.PORT || 3000;
+    const port = config.port;
     this.app.listen(port, () => {
       logger.info({ port }, `Server is running at http://localhost:${port}`);
     });

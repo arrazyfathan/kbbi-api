@@ -1,34 +1,132 @@
-import "dotenv/config";
+import { config as loadDotenv } from "dotenv";
+import { z } from "zod";
 
-function parsePositiveIntegerEnv(name: string, defaultValue: number): number {
-  const value = process.env[name];
-
-  if (!value) {
-    return defaultValue;
-  }
-
-  const parsed = Number(value);
-
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : defaultValue;
+if (process.env.NODE_ENV !== "test" && process.env.VITEST !== "true") {
+  loadDotenv();
 }
 
-const config = {
+const DEFAULT_PORT = 3000;
+const DEFAULT_BASE_URL = "http://localhost:3000";
+const DEFAULT_GLOBAL_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const DEFAULT_GLOBAL_RATE_LIMIT_MAX = 300;
+const DEFAULT_SCRAPER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const DEFAULT_SCRAPER_RATE_LIMIT_MAX = 30;
+
+const optionalTrimmedString = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().optional(),
+);
+
+function positiveIntegerEnv(name: string, defaultValue: number) {
+  return z.preprocess(
+    (value) => {
+      if (typeof value === "string" && value.trim() === "") {
+        return undefined;
+      }
+
+      return value;
+    },
+    z.coerce.number().int().positive(`${name} must be a positive integer`).default(defaultValue),
+  );
+}
+
+const envSchema = z
+  .object({
+    PORT: positiveIntegerEnv("PORT", DEFAULT_PORT),
+    BASE_URL: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().trim().url("BASE_URL must be a valid URL").default(DEFAULT_BASE_URL),
+    ),
+    RATE_LIMIT_GLOBAL_WINDOW_MS: positiveIntegerEnv("RATE_LIMIT_GLOBAL_WINDOW_MS", DEFAULT_GLOBAL_RATE_LIMIT_WINDOW_MS),
+    RATE_LIMIT_GLOBAL_MAX: positiveIntegerEnv("RATE_LIMIT_GLOBAL_MAX", DEFAULT_GLOBAL_RATE_LIMIT_MAX),
+    RATE_LIMIT_SCRAPER_WINDOW_MS: positiveIntegerEnv(
+      "RATE_LIMIT_SCRAPER_WINDOW_MS",
+      DEFAULT_SCRAPER_RATE_LIMIT_WINDOW_MS,
+    ),
+    RATE_LIMIT_SCRAPER_MAX: positiveIntegerEnv("RATE_LIMIT_SCRAPER_MAX", DEFAULT_SCRAPER_RATE_LIMIT_MAX),
+    SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
+    SUPABASE_ANON_KEY: optionalTrimmedString,
+    SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
+    VISITOR_HASH_SALT: optionalTrimmedString,
+  })
+  .superRefine((env, ctx) => {
+    const hasSupabaseUrl = Boolean(env.SUPABASE_URL);
+    const hasSupabaseKey = Boolean(env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_ROLE_KEY);
+
+    if (hasSupabaseUrl !== hasSupabaseKey) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Supabase config must include SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
+        path: hasSupabaseUrl ? ["SUPABASE_ANON_KEY"] : ["SUPABASE_URL"],
+      });
+    }
+  });
+
+const parsedEnv = parseEnv(process.env);
+const supabaseKey = parsedEnv.SUPABASE_SERVICE_ROLE_KEY || parsedEnv.SUPABASE_ANON_KEY;
+
+export type Config = {
+  port: number;
+  kbbiUrl: string;
+  wikiquoteProverbUrl: string;
+  wikiquoteIndonesianFigureUrl: string;
+  baseUrl: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  supabaseServiceRoleKey?: string;
+  supabaseKey?: string;
+  isSupabaseConfigured: boolean;
+  visitorHashSalt?: string;
+  rateLimit: {
+    global: {
+      windowMs: number;
+      max: number;
+    };
+    scraper: {
+      windowMs: number;
+      max: number;
+    };
+  };
+};
+
+const config: Config = {
+  port: parsedEnv.PORT,
   kbbiUrl: "https://kbbi.kemendikdasmen.go.id/entri",
   wikiquoteProverbUrl: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
   wikiquoteIndonesianFigureUrl: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
-  baseUrl: process.env.BASE_URL || "http://localhost:3000",
-  supabaseUrl: process.env.SUPABASE_URL,
-  supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
+  baseUrl: parsedEnv.BASE_URL,
+  supabaseUrl: parsedEnv.SUPABASE_URL,
+  supabaseAnonKey: parsedEnv.SUPABASE_ANON_KEY,
+  supabaseServiceRoleKey: parsedEnv.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseKey,
+  isSupabaseConfigured: Boolean(parsedEnv.SUPABASE_URL && supabaseKey),
+  visitorHashSalt: parsedEnv.VISITOR_HASH_SALT,
   rateLimit: {
     global: {
-      windowMs: parsePositiveIntegerEnv("RATE_LIMIT_GLOBAL_WINDOW_MS", 15 * 60 * 1000),
-      max: parsePositiveIntegerEnv("RATE_LIMIT_GLOBAL_MAX", 300),
+      windowMs: parsedEnv.RATE_LIMIT_GLOBAL_WINDOW_MS,
+      max: parsedEnv.RATE_LIMIT_GLOBAL_MAX,
     },
     scraper: {
-      windowMs: parsePositiveIntegerEnv("RATE_LIMIT_SCRAPER_WINDOW_MS", 15 * 60 * 1000),
-      max: parsePositiveIntegerEnv("RATE_LIMIT_SCRAPER_MAX", 30),
+      windowMs: parsedEnv.RATE_LIMIT_SCRAPER_WINDOW_MS,
+      max: parsedEnv.RATE_LIMIT_SCRAPER_MAX,
     },
   },
 };
+
+export function parseEnv(env: NodeJS.ProcessEnv) {
+  const result = envSchema.safeParse(env);
+
+  if (result.success) {
+    return result.data;
+  }
+
+  const issues = result.error.issues.map((issue) => {
+    const variableName = issue.path.join(".") || "environment";
+
+    return `${variableName}: ${issue.message}`;
+  });
+
+  throw new Error(`Invalid environment configuration:\n${issues.join("\n")}`);
+}
 
 export default config;

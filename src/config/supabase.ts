@@ -2,16 +2,20 @@ import { createClient } from "@supabase/supabase-js";
 import config from ".";
 import logger from "../lib/logger";
 
-const isSupabaseConfigured = Boolean(config.supabaseUrl && config.supabaseKey);
-const supabaseUrl = config.supabaseUrl;
-const supabaseKey = config.supabaseKey;
+const supabaseConfig =
+  config.isSupabaseConfigured && config.supabaseUrl && config.supabaseKey
+    ? {
+        url: config.supabaseUrl,
+        key: config.supabaseKey,
+      }
+    : null;
 
-if (!config.supabaseUrl || !config.supabaseKey) {
+if (!supabaseConfig) {
   logger.warn("Supabase env is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.");
 }
 
-export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseKey as string, {
+export const supabase = supabaseConfig
+  ? createClient(supabaseConfig.url, supabaseConfig.key, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -30,7 +34,7 @@ export function getSupabaseHost(): string | null {
 }
 
 export async function checkSupabaseConnection() {
-  if (!isSupabaseConfigured) {
+  if (!supabaseConfig) {
     return {
       connected: false,
       host: getSupabaseHost(),
@@ -38,11 +42,11 @@ export async function checkSupabaseConnection() {
     };
   }
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+  const response = await fetch(`${supabaseConfig.url}/rest/v1/`, {
     method: "GET",
     headers: {
-      apikey: supabaseKey as string,
-      Authorization: `Bearer ${supabaseKey}`,
+      apikey: supabaseConfig.key,
+      Authorization: `Bearer ${supabaseConfig.key}`,
     },
   });
 

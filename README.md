@@ -47,23 +47,30 @@ RATE_LIMIT_GLOBAL_WINDOW_MS=900000
 RATE_LIMIT_GLOBAL_MAX=300
 RATE_LIMIT_SCRAPER_WINDOW_MS=900000
 RATE_LIMIT_SCRAPER_MAX=30
+# Optional. Reserved for future salted visitor hashing support.
+VISITOR_HASH_SALT=replace-with-random-secret
+
+# Optional for scraping endpoints. Required together for visit tracking and /words/top.
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 # Optional. Used before SUPABASE_ANON_KEY when present.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-| Variable                       | Required           | Description                                                                                     |
-| ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
-| `PORT`                         | No                 | Server port. Defaults to `3000`.                                                                |
-| `BASE_URL`                     | No                 | Base URL used in the root endpoint examples. Defaults to `http://localhost:3000`.               |
-| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                  |
-| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Global request limit per IP per window. Defaults to `300`.                                      |
-| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes). |
-| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Scraper/search request limit per IP per window. Defaults to `30`.                               |
-| `SUPABASE_URL`                 | For visit tracking | Supabase project URL.                                                                           |
-| `SUPABASE_ANON_KEY`            | For visit tracking | Supabase anon key.                                                                              |
-| `SUPABASE_SERVICE_ROLE_KEY`    | No                 | Preferred Supabase key when provided.                                                           |
+| Variable                       | Required           | Description                                                                                                      |
+| ------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `PORT`                         | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                   |
+| `BASE_URL`                     | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.  |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                  |
+| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                      |
+| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes). |
+| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                               |
+| `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.  |
+| `SUPABASE_ANON_KEY`            | For visit tracking | Supabase anon key. Required when `SUPABASE_URL` is set and `SUPABASE_SERVICE_ROLE_KEY` is absent.                |
+| `SUPABASE_SERVICE_ROLE_KEY`    | No                 | Preferred Supabase key when provided. Takes precedence over `SUPABASE_ANON_KEY`.                                 |
+| `VISITOR_HASH_SALT`            | No                 | Reserved for future salted visitor hashing support. Not required by the current implementation.                  |
+
+Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error.
 
 ## Installation
 
