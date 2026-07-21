@@ -203,13 +203,17 @@ Run all tests:
 npm test
 ```
 
+This runs the unit tests and integration tests. Integration tests exercise the real Express app through HTTP requests
+with external KBBI, Wikiquote, and Supabase dependencies mocked for deterministic local runs.
+
 Run a production build check:
 
 ```bash
 npm run build
 ```
 
-The test suite covers parser fixtures, controller behavior, error responses, word visit tracking, and top visited words behavior.
+The test suite covers parser fixtures, controller behavior, error responses, middleware, word visit tracking, top visited
+words behavior, and HTTP integration behavior.
 
 ## Code Quality
 
