@@ -1,6 +1,7 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import apiRouter from "./routes/api.routes";
+import docsRouter from "./routes/docs.routes";
 import config from "./config";
 import logger from "./lib/logger";
 import { errorMiddleware } from "./middlewares/error.middleware";
@@ -35,6 +36,7 @@ class App {
   }
 
   private initializeRoutes() {
+    this.app.use(docsRouter);
     this.app.use(apiRouter);
   }
 

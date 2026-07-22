@@ -16,7 +16,8 @@ A REST API for Indonesian language data built with Node.js, Express 5, and TypeS
 
 ## API Documentation
 
-See [docs/API.md](docs/API.md) for the full endpoint reference, request parameters, headers, and response examples.
+See [docs/API.md](docs/API.md) for the human-readable endpoint reference and [docs/openapi.yaml](docs/openapi.yaml) for the OpenAPI contract.
+When the server is running, interactive Swagger UI is available at `http://localhost:3000/docs`.
 
 Quick examples:
 
@@ -240,7 +241,8 @@ src/
 └── server.ts           # Server entry point
 
 docs/
-└── API.md              # Endpoint reference
+├── API.md              # Endpoint reference
+└── openapi.yaml        # OpenAPI contract
 
 supabase/
 └── migrations/         # Database schema and view migrations
