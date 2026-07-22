@@ -51,6 +51,24 @@ export function parseRequiredQuery(value: unknown, name: string): string {
   return parsed.data;
 }
 
+export function parseBooleanQuery(value: unknown, name: string, defaultValue = false): boolean {
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  const parsed = z.enum(["true", "false"]).safeParse(value);
+
+  if (!parsed.success) {
+    throw invalidRequest(`Query parameter '${name}' must be either 'true' or 'false'`, {
+      field: name,
+      location: "query",
+      reason: "Must be either 'true' or 'false'",
+    });
+  }
+
+  return parsed.data === "true";
+}
+
 export function parseWordParam(value: unknown): { word: string; normalizedWord: string } {
   const parsed = requiredStringSchema.safeParse(value);
 

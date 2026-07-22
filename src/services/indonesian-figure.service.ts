@@ -8,33 +8,35 @@ import {
 } from "../interfaces/kbbi.interface";
 import { getScraperHtml, isHttpNotFound } from "../lib/http-client";
 
+type FigureListOptions = {
+  includeDetails?: boolean;
+};
+
 export class IndonesianFigureService {
   private static cache: IndonesianFigureList | null = null;
   private static detailCache = new Map<string, IndonesianFigure>();
   private static readonly sourceUrl = config.wikiquoteIndonesianFigureUrl;
+  private static readonly detailConcurrencyLimit = 5;
 
-  static async list(page = 1, limit = 20): Promise<PaginatedIndonesianFigureList> {
+  static async list(page = 1, limit = 20, options: FigureListOptions = {}): Promise<PaginatedIndonesianFigureList> {
     const data = await this.getAll();
     const paginated = this.paginate(data.items, page, limit);
-    const items = await Promise.all(paginated.items.map((item) => this.detail(item.slug, item)));
 
-    return {
-      ...paginated,
-      items: items.filter((item): item is IndonesianFigure => item !== null),
-    };
+    return this.withOptionalDetails(paginated, options.includeDetails === true);
   }
 
-  static async search(query: string, page = 1, limit = 20): Promise<PaginatedIndonesianFigureList> {
+  static async search(
+    query: string,
+    page = 1,
+    limit = 20,
+    options: FigureListOptions = {},
+  ): Promise<PaginatedIndonesianFigureList> {
     const data = await this.getAll();
     const normalizedQuery = this.normalizeSearchText(query);
     const items = data.items.filter((item) => this.normalizeSearchText(item.name || "").includes(normalizedQuery));
     const paginated = this.paginate(items, page, limit);
-    const details = await Promise.all(paginated.items.map((item) => this.detail(item.slug, item)));
 
-    return {
-      ...paginated,
-      items: details.filter((item): item is IndonesianFigure => item !== null),
-    };
+    return this.withOptionalDetails(paginated, options.includeDetails === true);
   }
 
   static async detail(slug: string, fallback?: IndonesianFigureSummary): Promise<IndonesianFigure | null> {
@@ -122,6 +124,48 @@ export class IndonesianFigureService {
 
   private static parseDetailHtml(html: string, fallback?: IndonesianFigureSummary): IndonesianFigure {
     return parseIndonesianFigureDetailHtml(html, { fallback, sourceUrl: this.sourceUrl });
+  }
+
+  private static async withOptionalDetails(
+    paginated: Omit<PaginatedIndonesianFigureList, "items"> & { items: IndonesianFigureSummary[] },
+    includeDetails: boolean,
+  ): Promise<PaginatedIndonesianFigureList> {
+    if (!includeDetails) {
+      return paginated;
+    }
+
+    const items = await this.mapWithConcurrency(
+      paginated.items,
+      this.detailConcurrencyLimit,
+      async (item) => await this.detail(item.slug, item),
+    );
+
+    return {
+      ...paginated,
+      items: items.filter((item): item is IndonesianFigure => item !== null),
+    };
+  }
+
+  private static async mapWithConcurrency<T, R>(
+    items: T[],
+    limit: number,
+    mapper: (item: T) => Promise<R>,
+  ): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let nextIndex = 0;
+
+    async function worker(): Promise<void> {
+      while (nextIndex < items.length) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        results[currentIndex] = await mapper(items[currentIndex]);
+      }
+    }
+
+    const workerCount = Math.min(Math.max(limit, 1), items.length);
+    await Promise.all(Array.from({ length: workerCount }, worker));
+
+    return results;
   }
 
   private static extractDescription($: cheerio.CheerioAPI): string | null {

@@ -8,7 +8,7 @@ A REST API for Indonesian language data built with Node.js, Express 5, and TypeS
 - Anonymous word visit tracking using `X-Visitor-Id`.
 - Top visited words API backed by Supabase aggregation.
 - Paginated Indonesian proverb list, search, and detail endpoints.
-- Paginated Indonesian figure list, search, and detail endpoints.
+- Paginated Indonesian figure summary, search, and detail endpoints.
 - Centralized error handling and request logging with Pino.
 - IP-based rate limiting for public routes and stricter scraper-backed search endpoints.
 - Controller-service architecture with focused Vitest coverage.
@@ -27,6 +27,7 @@ curl -H "X-Visitor-Id: anonymous-client-id" http://localhost:3000/search/demokra
 curl http://localhost:3000/words/top?limit=10
 curl "http://localhost:3000/proverb/search?q=air&page=1&limit=5"
 curl "http://localhost:3000/figure/search?q=soekarno"
+curl "http://localhost:3000/figure/Soekarno"
 ```
 
 ## Requirements
@@ -183,6 +184,12 @@ Requests over the limit return HTTP `429`:
 ```
 
 Standard `RateLimit` headers are included where supported. The default limiter uses in-memory storage, so limits are tracked per Node.js process or serverless runtime instance.
+
+## Indonesian Figures
+
+`GET /figure` and `GET /figure/search` return paginated summaries by default. Summary items contain `name`, `slug`, and `sourceUrl`; use `GET /figure/:slug` for full `photo`, `description`, and `quotes`.
+
+For compatibility with older detailed list responses, pass `includeDetails=true` to `/figure` or `/figure/search`. This opt-in mode fetches detail pages for the current page items, so it is slower than the default summary response.
 
 ## Available Scripts
 

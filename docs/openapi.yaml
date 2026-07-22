@@ -307,9 +307,10 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/FigureLimit"
+        - $ref: "#/components/parameters/IncludeFigureDetails"
       responses:
         "200":
-          description: Paginated Indonesian figure list.
+          description: Paginated Indonesian figure list. Items are summaries unless includeDetails=true is provided.
           content:
             application/json:
               schema:
@@ -332,10 +333,6 @@ paths:
                         - name: Soekarno
                           slug: Soekarno
                           sourceUrl: https://id.wikiquote.org/wiki/Soekarno
-                          photo: https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg
-                          description: Soekarno adalah presiden pertama Republik Indonesia yang menjabat pada kurun waktu 1945-1967.
-                          quotes:
-                            - Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya
         "400":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -355,9 +352,10 @@ paths:
         - $ref: "#/components/parameters/SearchQuery"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/FigureLimit"
+        - $ref: "#/components/parameters/IncludeFigureDetails"
       responses:
         "200":
-          description: Paginated Indonesian figure search results.
+          description: Paginated Indonesian figure search results. Items are summaries unless includeDetails=true is provided.
           content:
             application/json:
               schema:
@@ -481,6 +479,15 @@ components:
         maximum: 50
         default: 20
       example: 10
+    IncludeFigureDetails:
+      name: includeDetails
+      in: query
+      required: false
+      description: Set to true to include photo, description, and quotes in list/search items. Defaults to false so list/search avoid per-item detail-page requests.
+      schema:
+        type: boolean
+        default: false
+      example: false
     SearchQuery:
       name: q
       in: query
@@ -831,15 +838,12 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/PaginatedProverbList"
-    IndonesianFigure:
+    IndonesianFigureSummary:
       type: object
       required:
         - name
         - slug
         - sourceUrl
-        - photo
-        - description
-        - quotes
       properties:
         name:
           type:
@@ -850,21 +854,30 @@ components:
         sourceUrl:
           type: string
           format: uri
-        photo:
-          type:
-            - string
-            - "null"
-          format: uri
-        description:
-          type:
-            - string
-            - "null"
-        quotes:
-          type:
-            - array
-            - "null"
-          items:
-            type: string
+    IndonesianFigure:
+      allOf:
+        - $ref: "#/components/schemas/IndonesianFigureSummary"
+        - type: object
+          required:
+            - photo
+            - description
+            - quotes
+          properties:
+            photo:
+              type:
+                - string
+                - "null"
+              format: uri
+            description:
+              type:
+                - string
+                - "null"
+            quotes:
+              type:
+                - array
+                - "null"
+              items:
+                type: string
     PaginatedIndonesianFigureList:
       type: object
       required:
@@ -880,7 +893,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/IndonesianFigure"
+            $ref: "#/components/schemas/IndonesianFigureSummary"
     PaginatedFigureResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"

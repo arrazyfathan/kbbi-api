@@ -23,7 +23,18 @@ describe("IndonesianFigureController", () => {
 
     await IndonesianFigureController.list(req, res);
 
-    expect(IndonesianFigureService.list).toHaveBeenCalledWith(2, 50);
+    expect(IndonesianFigureService.list).toHaveBeenCalledWith(2, 50, { includeDetails: false });
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("passes includeDetails to list when requested", async () => {
+    vi.mocked(IndonesianFigureService.list).mockResolvedValueOnce(createPaginatedResult());
+
+    const { req, res } = createRequestResponse({ query: { includeDetails: "true" } });
+
+    await IndonesianFigureController.list(req, res);
+
+    expect(IndonesianFigureService.list).toHaveBeenCalledWith(1, 20, { includeDetails: true });
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
@@ -60,7 +71,18 @@ describe("IndonesianFigureController", () => {
 
     await IndonesianFigureController.search(req, res);
 
-    expect(IndonesianFigureService.search).toHaveBeenCalledWith("soekarno", 1, 5);
+    expect(IndonesianFigureService.search).toHaveBeenCalledWith("soekarno", 1, 5, { includeDetails: false });
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("passes includeDetails to search when requested", async () => {
+    vi.mocked(IndonesianFigureService.search).mockResolvedValueOnce(createPaginatedResult());
+
+    const { req, res } = createRequestResponse({ query: { q: "soekarno", includeDetails: "true" } });
+
+    await IndonesianFigureController.search(req, res);
+
+    expect(IndonesianFigureService.search).toHaveBeenCalledWith("soekarno", 1, 20, { includeDetails: true });
     expect(res.status).toHaveBeenCalledWith(200);
   });
 

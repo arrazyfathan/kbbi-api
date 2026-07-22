@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseBooleanQuery,
   parsePaginationParams,
   parseRequiredQuery,
   parseSlugParam,
@@ -41,6 +42,22 @@ describe("request validation", () => {
 
   it("parses and trims required query values", () => {
     expect(parseRequiredQuery(" air ", "q")).toBe("air");
+  });
+
+  it("parses optional boolean query values", () => {
+    expect(parseBooleanQuery(undefined, "includeDetails")).toBe(false);
+    expect(parseBooleanQuery(undefined, "includeDetails", true)).toBe(true);
+    expect(parseBooleanQuery("true", "includeDetails")).toBe(true);
+    expect(parseBooleanQuery("false", "includeDetails")).toBe(false);
+  });
+
+  it.each(["", "TRUE", "1", true, ["true"]])("rejects invalid boolean query values %#", (value) => {
+    expect(() => parseBooleanQuery(value, "includeDetails")).toThrowError(
+      expect.objectContaining({
+        code: API_ERROR_CODES.VALIDATION_ERROR,
+        message: "Query parameter 'includeDetails' must be either 'true' or 'false'",
+      }),
+    );
   });
 
   it.each([undefined, "", "   ", ["air"]])("rejects missing or invalid q values %#", (value) => {

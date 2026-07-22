@@ -70,6 +70,8 @@ export interface IndonesianFigure extends IndonesianFigureSummary {
   quotes: string[] | null;
 }
 
+export type IndonesianFigureListItem = IndonesianFigureSummary | IndonesianFigure;
+
 export interface IndonesianFigureList {
   source: string;
   count: number;
@@ -79,7 +81,7 @@ export interface IndonesianFigureList {
 export interface PaginatedIndonesianFigureList {
   source: string;
   pagination: Pagination;
-  items: IndonesianFigure[];
+  items: IndonesianFigureListItem[];
 }
 
 export interface ApiResponse<T> {

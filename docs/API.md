@@ -310,13 +310,14 @@ Returns a proverb and its meaning from the proverb detail page.
 
 ### 7. List Indonesian Figures
 
-Returns paginated Indonesian figures scraped from Wikiquote. Each item includes detailed fields from the figure page.
+Returns paginated Indonesian figure summaries scraped from Wikiquote. By default, items include only `name`, `slug`, and `sourceUrl` so the endpoint does not fetch every detail page.
 
 - **URL**: `/figure`
 - **Method**: `GET`
 - **Query Params**:
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
+  - `includeDetails` (Optional): Set to `true` to include `photo`, `description`, and `quotes` in each item. Defaults to `false`.
 - **Example**: `/figure?page=1&limit=10`
 - **Success Response**:
   - **Code**: 200 OK
@@ -339,10 +340,7 @@ Returns paginated Indonesian figures scraped from Wikiquote. Each item includes 
           {
             "name": "Soekarno",
             "slug": "Soekarno",
-            "sourceUrl": "https://id.wikiquote.org/wiki/Soekarno",
-            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg",
-            "description": "Soekarno adalah presiden pertama Republik Indonesia yang menjabat pada kurun waktu 1945-1967.",
-            "quotes": ["Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"]
+            "sourceUrl": "https://id.wikiquote.org/wiki/Soekarno"
           }
         ]
       }
@@ -351,7 +349,7 @@ Returns paginated Indonesian figures scraped from Wikiquote. Each item includes 
 
 ### 8. Search Indonesian Figures
 
-Searches Indonesian figures by name and returns paginated detailed results.
+Searches Indonesian figures by name and returns paginated summaries by default.
 
 - **URL**: `/figure/search`
 - **Method**: `GET`
@@ -359,6 +357,7 @@ Searches Indonesian figures by name and returns paginated detailed results.
   - `q` (Required): Search keyword.
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
+  - `includeDetails` (Optional): Set to `true` to include `photo`, `description`, and `quotes` in each item. Defaults to `false`.
 - **Example**: `/figure/search?q=soekarno`
 
 ### 9. Indonesian Figure Detail
