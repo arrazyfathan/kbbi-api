@@ -54,22 +54,22 @@ VISITOR_HASH_SALT=replace-with-random-secret
 # Optional for scraping endpoints. Required together for visit tracking and /words/top.
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
-# Optional. Used before SUPABASE_ANON_KEY when present.
+# Required in production for visit tracking. Used before SUPABASE_ANON_KEY when present.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-| Variable                       | Required           | Description                                                                                                      |
-| ------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `PORT`                         | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                   |
-| `BASE_URL`                     | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.  |
-| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                  |
-| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                      |
-| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes). |
-| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                               |
-| `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.  |
-| `SUPABASE_ANON_KEY`            | For visit tracking | Supabase anon key. Required when `SUPABASE_URL` is set and `SUPABASE_SERVICE_ROLE_KEY` is absent.                |
-| `SUPABASE_SERVICE_ROLE_KEY`    | No                 | Preferred Supabase key when provided. Takes precedence over `SUPABASE_ANON_KEY`.                                 |
-| `VISITOR_HASH_SALT`            | No                 | Reserved for future salted visitor hashing support. Not required by the current implementation.                  |
+| Variable                       | Required           | Description                                                                                                       |
+| ------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `PORT`                         | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                    |
+| `BASE_URL`                     | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.   |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                   |
+| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                       |
+| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).  |
+| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                |
+| `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
+| `SUPABASE_ANON_KEY`            | Local/dev fallback | Supabase anon key. Only use for local development unless you add explicit public RLS policies.                    |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Production         | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
+| `VISITOR_HASH_SALT`            | No                 | Reserved for future salted visitor hashing support. Not required by the current implementation.                   |
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error.
 
@@ -88,15 +88,16 @@ npm install
 1. Create a Supabase project from the Supabase dashboard.
 2. Open **Project Settings** > **API**.
 3. Copy the project URL into `SUPABASE_URL`.
-4. Copy either the anon key into `SUPABASE_ANON_KEY` or the service role key into `SUPABASE_SERVICE_ROLE_KEY`.
+4. Copy the service role key into `SUPABASE_SERVICE_ROLE_KEY`. Keep this key server-side only.
 5. Open **SQL Editor** and run the migration files in this order:
 
 ```text
 supabase/migrations/001_create_word_visits.sql
 supabase/migrations/002_create_top_word_visits_view.sql
+supabase/migrations/20260722022955_secure_word_visits_rls.sql
 ```
 
-The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /words/top`.
+The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /words/top`. Row-Level Security is enabled and direct `anon`/`authenticated` access is revoked because this API accesses Supabase through the backend service role.
 
 ### Local Supabase CLI
 
@@ -126,9 +127,10 @@ SUPABASE_ANON_KEY=your-local-anon-key
 ```text
 supabase/migrations/001_create_word_visits.sql
 supabase/migrations/002_create_top_word_visits_view.sql
+supabase/migrations/20260722022955_secure_word_visits_rls.sql
 ```
 
-The first migration creates `public.word_visits` and an index on `word`. The second migration creates `public.top_word_visits`, an aggregate view used by the top visited words endpoint.
+The first migration creates `public.word_visits` and an index on `word`. The second migration creates `public.top_word_visits`, an aggregate view used by the top visited words endpoint. The third migration enables RLS and restricts table/view access to the backend service role.
 
 ### Verify Supabase
 
