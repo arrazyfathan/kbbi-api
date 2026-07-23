@@ -7,6 +7,7 @@ const CONFIG_ENV_KEYS = [
   "RATE_LIMIT_GLOBAL_MAX",
   "RATE_LIMIT_SCRAPER_WINDOW_MS",
   "RATE_LIMIT_SCRAPER_MAX",
+  "WIKIQUOTE_CACHE_TTL_MS",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -44,6 +45,9 @@ describe("config", () => {
         max: 30,
       },
     });
+    expect(config.cache).toEqual({
+      wikiquoteTtlMs: 3600000,
+    });
   });
 
   it("parses valid env values and prefers the service role key", async () => {
@@ -53,6 +57,7 @@ describe("config", () => {
     vi.stubEnv("RATE_LIMIT_GLOBAL_MAX", "100");
     vi.stubEnv("RATE_LIMIT_SCRAPER_WINDOW_MS", "30000");
     vi.stubEnv("RATE_LIMIT_SCRAPER_MAX", "10");
+    vi.stubEnv("WIKIQUOTE_CACHE_TTL_MS", "120000");
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("SUPABASE_ANON_KEY", "anon-key");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
@@ -77,6 +82,9 @@ describe("config", () => {
         windowMs: 30000,
         max: 10,
       },
+    });
+    expect(config.cache).toEqual({
+      wikiquoteTtlMs: 120000,
     });
   });
 
@@ -107,6 +115,14 @@ describe("config", () => {
 
     expect(() => parseEnv({ PORT: "abc" })).toThrow(/PORT/);
     expect(() => parseEnv({ PORT: "0" })).toThrow(/PORT/);
+  });
+
+  it("rejects invalid cache TTL values with a clear variable name", async () => {
+    const { parseEnv } = await import("../src/config");
+
+    expect(() => parseEnv({ WIKIQUOTE_CACHE_TTL_MS: "abc" })).toThrow(/WIKIQUOTE_CACHE_TTL_MS/);
+    expect(() => parseEnv({ WIKIQUOTE_CACHE_TTL_MS: "0" })).toThrow(/WIKIQUOTE_CACHE_TTL_MS/);
+    expect(() => parseEnv({ WIKIQUOTE_CACHE_TTL_MS: "-1" })).toThrow(/WIKIQUOTE_CACHE_TTL_MS/);
   });
 
   it("rejects partial Supabase config", async () => {

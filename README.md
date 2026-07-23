@@ -49,6 +49,7 @@ RATE_LIMIT_GLOBAL_WINDOW_MS=900000
 RATE_LIMIT_GLOBAL_MAX=300
 RATE_LIMIT_SCRAPER_WINDOW_MS=900000
 RATE_LIMIT_SCRAPER_MAX=30
+WIKIQUOTE_CACHE_TTL_MS=3600000
 # Optional. Reserved for future salted visitor hashing support.
 VISITOR_HASH_SALT=replace-with-random-secret
 
@@ -67,12 +68,15 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 | `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                       |
 | `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).  |
 | `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                |
+| `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.  |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | Local/dev fallback | Supabase anon key. Only use for local development unless you add explicit public RLS policies.                    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Production         | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
 | `VISITOR_HASH_SALT`            | No                 | Reserved for future salted visitor hashing support. Not required by the current implementation.                   |
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error.
+
+Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. The cache is process-local, resets on restart, and is not shared across multiple deployed instances.
 
 ## Installation
 

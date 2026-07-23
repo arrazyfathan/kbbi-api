@@ -7,16 +7,34 @@ import {
   PaginatedIndonesianFigureList,
 } from "../interfaces/kbbi.interface";
 import { getScraperHtml, isHttpNotFound } from "../lib/http-client";
+import { TtlCache } from "../lib/ttl-cache";
 
 type FigureListOptions = {
   includeDetails?: boolean;
 };
 
+type Clock = () => number;
+
+const figureListCacheKey = "all";
+
 export class IndonesianFigureService {
-  private static cache: IndonesianFigureList | null = null;
-  private static detailCache = new Map<string, IndonesianFigure>();
+  private static now: Clock = Date.now;
+  private static cache = new TtlCache<typeof figureListCacheKey, IndonesianFigureList>({
+    ttlMs: config.cache.wikiquoteTtlMs,
+    now: () => IndonesianFigureService.now(),
+  });
+  private static detailCache = new TtlCache<string, IndonesianFigure>({
+    ttlMs: config.cache.wikiquoteTtlMs,
+    now: () => IndonesianFigureService.now(),
+  });
   private static readonly sourceUrl = config.wikiquoteIndonesianFigureUrl;
   private static readonly detailConcurrencyLimit = 5;
+
+  static configureCacheForTests(options: { now?: Clock } = {}): void {
+    this.now = options.now || Date.now;
+    this.cache.clear();
+    this.detailCache.clear();
+  }
 
   static async list(page = 1, limit = 20, options: FigureListOptions = {}): Promise<PaginatedIndonesianFigureList> {
     const data = await this.getAll();
@@ -78,8 +96,10 @@ export class IndonesianFigureService {
   }
 
   private static async getAll(): Promise<IndonesianFigureList> {
-    if (this.cache) {
-      return this.cache;
+    const cached = this.cache.get(figureListCacheKey);
+
+    if (cached) {
+      return cached;
     }
 
     const items: IndonesianFigureSummary[] = [];
@@ -102,13 +122,15 @@ export class IndonesianFigureService {
       currentUrl = parsed.nextUrl;
     }
 
-    this.cache = {
+    const data = {
       source: this.sourceUrl,
       count: items.length,
       items,
     };
 
-    return this.cache;
+    this.cache.set(figureListCacheKey, data);
+
+    return data;
   }
 
   private static async fetchHtml(url: string): Promise<string> {

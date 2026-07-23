@@ -1,0 +1,81 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+function fixture(name: string): string {
+  return readFileSync(join(process.cwd(), "test", "fixtures", name), "utf8");
+}
+
+describe("ProverbService", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it("reuses list cache before TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async () => fixture("proverb-list.html"));
+    const { ProverbService } = await loadService(getScraperHtml);
+    ProverbService.configureCacheForTests({ now: () => now });
+
+    await ProverbService.list(1, 20);
+    now = 1000;
+    await ProverbService.search("air", 1, 20);
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches list data again after TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async () => fixture("proverb-list.html"));
+    const { ProverbService } = await loadService(getScraperHtml);
+    ProverbService.configureCacheForTests({ now: () => now });
+
+    await ProverbService.list(1, 20);
+    now = 3600000;
+    await ProverbService.list(1, 20);
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(2);
+  });
+
+  it("reuses detail cache before TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async (url: string) =>
+      url.includes("Peribahasa_Indonesia") ? fixture("proverb-list.html") : fixture("proverb-detail.html"),
+    );
+    const { ProverbService } = await loadService(getScraperHtml);
+    ProverbService.configureCacheForTests({ now: () => now });
+
+    await ProverbService.detail("Ada_gula_ada_semut");
+    now = 1000;
+    await ProverbService.detail("Ada_gula_ada_semut");
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(2);
+    expect(getScraperHtml).toHaveBeenCalledWith("https://id.wikiquote.org/wiki/Peribahasa_Indonesia");
+    expect(getScraperHtml).toHaveBeenCalledWith("https://id.wikiquote.org/wiki/Ada_gula_ada_semut");
+  });
+
+  it("fetches detail data again after TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async (url: string) =>
+      url.includes("Peribahasa_Indonesia") ? fixture("proverb-list.html") : fixture("proverb-detail.html"),
+    );
+    const { ProverbService } = await loadService(getScraperHtml);
+    ProverbService.configureCacheForTests({ now: () => now });
+
+    await ProverbService.detail("Ada_gula_ada_semut");
+    now = 3600000;
+    await ProverbService.detail("Ada_gula_ada_semut");
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(4);
+  });
+});
+
+async function loadService(getScraperHtml: (url: string) => Promise<string>) {
+  vi.doMock("../src/lib/http-client", () => ({
+    getScraperHtml,
+    isHttpNotFound: () => false,
+  }));
+
+  return await import("../src/services/proverb.service");
+}

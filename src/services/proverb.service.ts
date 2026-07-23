@@ -2,11 +2,29 @@ import * as cheerio from "cheerio";
 import config from "../config";
 import { PaginatedProverbList, Proverb, ProverbDetail, ProverbList } from "../interfaces/kbbi.interface";
 import { getScraperHtml, isHttpNotFound } from "../lib/http-client";
+import { TtlCache } from "../lib/ttl-cache";
+
+type Clock = () => number;
+
+const proverbListCacheKey = "all";
 
 export class ProverbService {
-  private static cache: ProverbList | null = null;
-  private static detailCache = new Map<string, ProverbDetail>();
+  private static now: Clock = Date.now;
+  private static cache = new TtlCache<typeof proverbListCacheKey, ProverbList>({
+    ttlMs: config.cache.wikiquoteTtlMs,
+    now: () => ProverbService.now(),
+  });
+  private static detailCache = new TtlCache<string, ProverbDetail>({
+    ttlMs: config.cache.wikiquoteTtlMs,
+    now: () => ProverbService.now(),
+  });
   private static readonly sourceUrl = config.wikiquoteProverbUrl;
+
+  static configureCacheForTests(options: { now?: Clock } = {}): void {
+    this.now = options.now || Date.now;
+    this.cache.clear();
+    this.detailCache.clear();
+  }
 
   static async list(page = 1, limit = 20): Promise<PaginatedProverbList> {
     const data = await this.getAll();
@@ -56,20 +74,24 @@ export class ProverbService {
   }
 
   private static async getAll(): Promise<ProverbList> {
-    if (this.cache) {
-      return this.cache;
+    const cached = this.cache.get(proverbListCacheKey);
+
+    if (cached) {
+      return cached;
     }
 
     const html = await this.fetchHtml(this.sourceUrl);
     const items = this.parseHtml(html);
 
-    this.cache = {
+    const data = {
       source: this.sourceUrl,
       count: items.length,
       items,
     };
 
-    return this.cache;
+    this.cache.set(proverbListCacheKey, data);
+
+    return data;
   }
 
   private static async fetchHtml(url: string): Promise<string> {

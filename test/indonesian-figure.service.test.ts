@@ -100,6 +100,86 @@ describe("IndonesianFigureService", () => {
     expect(detailRequestCount).toBe(7);
     expect(maxActiveDetailRequests).toBeLessThanOrEqual(5);
   });
+
+  it("reuses list cache before TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async (url: string) => {
+      if (url.includes("pagefrom=Hatta")) {
+        return '<html><body><div id="mw-pages"></div></body></html>';
+      }
+
+      return fixture("figure-category.html");
+    });
+    const { IndonesianFigureService } = await loadService(getScraperHtml);
+    IndonesianFigureService.configureCacheForTests({ now: () => now });
+
+    await IndonesianFigureService.list(1, 20);
+    now = 1000;
+    await IndonesianFigureService.search("soekarno", 1, 20);
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(2);
+  });
+
+  it("fetches list data again after TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async (url: string) => {
+      if (url.includes("pagefrom=Hatta")) {
+        return '<html><body><div id="mw-pages"></div></body></html>';
+      }
+
+      return fixture("figure-category.html");
+    });
+    const { IndonesianFigureService } = await loadService(getScraperHtml);
+    IndonesianFigureService.configureCacheForTests({ now: () => now });
+
+    await IndonesianFigureService.list(1, 20);
+    now = 3600000;
+    await IndonesianFigureService.list(1, 20);
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(4);
+  });
+
+  it("reuses detail cache before TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async () => fixture("figure-detail.html"));
+    const { IndonesianFigureService } = await loadService(getScraperHtml);
+    IndonesianFigureService.configureCacheForTests({ now: () => now });
+
+    await IndonesianFigureService.detail("Soekarno", {
+      name: "Soekarno",
+      slug: "Soekarno",
+      sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+    });
+    now = 1000;
+    await IndonesianFigureService.detail("Soekarno", {
+      name: "Soekarno",
+      slug: "Soekarno",
+      sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+    });
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches detail data again after TTL expires", async () => {
+    let now = 0;
+    const getScraperHtml = vi.fn(async () => fixture("figure-detail.html"));
+    const { IndonesianFigureService } = await loadService(getScraperHtml);
+    IndonesianFigureService.configureCacheForTests({ now: () => now });
+
+    await IndonesianFigureService.detail("Soekarno", {
+      name: "Soekarno",
+      slug: "Soekarno",
+      sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+    });
+    now = 3600000;
+    await IndonesianFigureService.detail("Soekarno", {
+      name: "Soekarno",
+      slug: "Soekarno",
+      sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+    });
+
+    expect(getScraperHtml).toHaveBeenCalledTimes(2);
+  });
 });
 
 async function loadService(getScraperHtml: (url: string) => Promise<string>) {

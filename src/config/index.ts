@@ -11,6 +11,7 @@ const DEFAULT_GLOBAL_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_GLOBAL_RATE_LIMIT_MAX = 300;
 const DEFAULT_SCRAPER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_SCRAPER_RATE_LIMIT_MAX = 30;
+const DEFAULT_WIKIQUOTE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -44,6 +45,7 @@ const envSchema = z
       DEFAULT_SCRAPER_RATE_LIMIT_WINDOW_MS,
     ),
     RATE_LIMIT_SCRAPER_MAX: positiveIntegerEnv("RATE_LIMIT_SCRAPER_MAX", DEFAULT_SCRAPER_RATE_LIMIT_MAX),
+    WIKIQUOTE_CACHE_TTL_MS: positiveIntegerEnv("WIKIQUOTE_CACHE_TTL_MS", DEFAULT_WIKIQUOTE_CACHE_TTL_MS),
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
     SUPABASE_ANON_KEY: optionalTrimmedString,
     SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
@@ -87,6 +89,9 @@ export type Config = {
       max: number;
     };
   };
+  cache: {
+    wikiquoteTtlMs: number;
+  };
 };
 
 const config: Config = {
@@ -110,6 +115,9 @@ const config: Config = {
       windowMs: parsedEnv.RATE_LIMIT_SCRAPER_WINDOW_MS,
       max: parsedEnv.RATE_LIMIT_SCRAPER_MAX,
     },
+  },
+  cache: {
+    wikiquoteTtlMs: parsedEnv.WIKIQUOTE_CACHE_TTL_MS,
   },
 };
 
