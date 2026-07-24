@@ -1,12 +1,14 @@
-import { ErrorRequestHandler, Request } from "express";
+import { ErrorRequestHandler } from "express";
 import { ApiResponse } from "../interfaces/kbbi.interface";
 import { API_ERROR_CODES, isApiError } from "../lib/api-error";
 import { isUpstreamHttpError } from "../lib/http-client";
 import logger from "../lib/logger";
+import { getRequestId, setRequestIdHeader } from "../lib/request-id";
 
 export function buildErrorResponse(
   error: unknown,
   nodeEnv = process.env.NODE_ENV,
+  requestId?: string,
 ): {
   statusCode: number;
   body: ApiResponse<never>;
@@ -19,6 +21,7 @@ export function buildErrorResponse(
         message: error.message,
         code: error.code,
         ...(error.details ? { details: error.details } : {}),
+        ...(requestId ? { requestId } : {}),
       },
     };
   }
@@ -32,6 +35,7 @@ export function buildErrorResponse(
         success: false,
         message: error.message,
         code,
+        ...(requestId ? { requestId } : {}),
       },
     };
   }
@@ -46,13 +50,14 @@ export function buildErrorResponse(
       message,
       code: API_ERROR_CODES.INTERNAL_ERROR,
       ...(nodeEnv !== "production" ? { error: detail } : {}),
+      ...(requestId ? { requestId } : {}),
     },
   };
 }
 
 export const errorMiddleware: ErrorRequestHandler = (error, req, res, next) => {
-  const { statusCode, body } = buildErrorResponse(error);
   const requestId = getRequestId(req);
+  const { statusCode, body } = buildErrorResponse(error, process.env.NODE_ENV, requestId);
   const errorObject = error instanceof Error ? error : new Error(String(error));
 
   logger.error(
@@ -71,12 +76,9 @@ export const errorMiddleware: ErrorRequestHandler = (error, req, res, next) => {
     return;
   }
 
+  if (requestId) {
+    setRequestIdHeader(res, requestId);
+  }
+
   res.status(statusCode).json(body);
 };
-
-function getRequestId(req: Request): string | undefined {
-  const reqWithId = req as Request & { id?: string };
-  const header = req.headers["x-request-id"];
-
-  return reqWithId.id || (Array.isArray(header) ? header[0] : header);
-}

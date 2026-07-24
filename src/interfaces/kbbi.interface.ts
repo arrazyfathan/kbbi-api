@@ -91,4 +91,5 @@ export interface ApiResponse<T> {
   code?: ApiErrorCode;
   details?: ApiErrorDetails;
   error?: string;
+  requestId?: string;
 }

@@ -9,7 +9,7 @@ A REST API for Indonesian language data built with Node.js, Express 5, and TypeS
 - Top visited words API backed by Supabase aggregation.
 - Paginated Indonesian proverb list, search, and detail endpoints.
 - Paginated Indonesian figure summary, search, and detail endpoints.
-- Centralized error handling and request logging with Pino.
+- Request tracing with `X-Request-Id`, centralized error handling, and request logging with Pino.
 - IP-based rate limiting for public routes and stricter scraper-backed search endpoints.
 - Controller-service architecture with focused Vitest coverage.
 - Vercel-compatible serverless deployment configuration.
@@ -23,12 +23,15 @@ Quick examples:
 
 ```bash
 curl http://localhost:3000/search/demokrasi
+curl -H "X-Request-Id: local-debug-1" http://localhost:3000/search/demokrasi
 curl -H "X-Visitor-Id: anonymous-client-id" http://localhost:3000/search/demokrasi
 curl http://localhost:3000/words/top?limit=10
 curl "http://localhost:3000/proverb/search?q=air&page=1&limit=5"
 curl "http://localhost:3000/figure/search?q=soekarno"
 curl "http://localhost:3000/figure/Soekarno"
 ```
+
+Every response includes an `x-request-id` header. Provide `X-Request-Id` to preserve a client-generated correlation ID, or omit it and the API will generate one.
 
 ## Requirements
 
@@ -50,6 +53,7 @@ RATE_LIMIT_GLOBAL_MAX=300
 RATE_LIMIT_SCRAPER_WINDOW_MS=900000
 RATE_LIMIT_SCRAPER_MAX=30
 WIKIQUOTE_CACHE_TTL_MS=3600000
+KBBI_FETCH_TIMEOUT_MS=45000
 # Optional. Reserved for future salted visitor hashing support.
 VISITOR_HASH_SALT=replace-with-random-secret
 
@@ -69,6 +73,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 | `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).  |
 | `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                |
 | `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.  |
+| `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).   |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | Local/dev fallback | Supabase anon key. Only use for local development unless you add explicit public RLS policies.                    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Production         | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |

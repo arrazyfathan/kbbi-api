@@ -22,7 +22,9 @@ export class KbbiService {
   }
 
   private static async fetchHtml(word: string): Promise<string> {
-    return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`);
+    return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`, {
+      timeoutMs: config.upstream.kbbiFetchTimeoutMs,
+    });
   }
 
   private static parseHtml(html: string): Entry[] | null {

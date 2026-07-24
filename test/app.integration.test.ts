@@ -43,6 +43,7 @@ describe("Express app integration", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers["access-control-allow-origin"]).toBe("*");
+    expect(response.headers["x-request-id"]).toBeDefined();
     expect(response.body).toMatchObject({
       message: "Welcome to New KBBI API",
     });
@@ -66,6 +67,7 @@ describe("Express app integration", () => {
     const response = await request(createApp()).get("/search/Demokrasi").set("X-Visitor-Id", "client-1");
 
     expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBeDefined();
     expect(KbbiService.search).toHaveBeenCalledWith("Demokrasi");
     expect(WordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "client-1");
     expect(response.body).toEqual({
@@ -82,6 +84,15 @@ describe("Express app integration", () => {
         ],
       },
     });
+  });
+
+  it("preserves client-provided request IDs in response headers", async () => {
+    vi.mocked(WordVisitService.getTopVisitedWords).mockResolvedValueOnce([]);
+
+    const response = await request(createApp()).get("/words/top?limit=2").set("X-Request-Id", "client-request-1");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["x-request-id"]).toBe("client-request-1");
   });
 
   it("returns top visited words through HTTP", async () => {
@@ -109,8 +120,10 @@ describe("Express app integration", () => {
 
   it("returns validation errors without calling the external-backed service", async () => {
     const response = await request(createApp()).get("/proverb/search");
+    const requestId = response.headers["x-request-id"];
 
     expect(response.status).toBe(400);
+    expect(requestId).toBeDefined();
     expect(ProverbService.search).not.toHaveBeenCalled();
     expect(response.body).toEqual({
       success: false,
@@ -123,17 +136,20 @@ describe("Express app integration", () => {
           reason: "Required non-empty string",
         },
       ],
+      requestId,
     });
   });
 
   it("returns a stable 404 response for unknown routes", async () => {
-    const response = await request(createApp()).get("/unknown-route");
+    const response = await request(createApp()).get("/unknown-route").set("X-Request-Id", "client-request-404");
 
     expect(response.status).toBe(404);
+    expect(response.headers["x-request-id"]).toBe("client-request-404");
     expect(response.body).toEqual({
       success: false,
       message: "Endpoint not found",
       code: API_ERROR_CODES.NOT_FOUND,
+      requestId: "client-request-404",
     });
   });
 
@@ -146,12 +162,15 @@ describe("Express app integration", () => {
     );
 
     const response = await request(createApp()).get("/search/gagal");
+    const requestId = response.headers["x-request-id"];
 
     expect(response.status).toBe(502);
+    expect(requestId).toBeDefined();
     expect(response.body).toEqual({
       success: false,
       message: "Upstream service failed",
       code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+      requestId,
     });
     expect(WordVisitService.trackWordVisit).not.toHaveBeenCalled();
   });

@@ -12,6 +12,7 @@ const DEFAULT_GLOBAL_RATE_LIMIT_MAX = 300;
 const DEFAULT_SCRAPER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_SCRAPER_RATE_LIMIT_MAX = 30;
 const DEFAULT_WIKIQUOTE_CACHE_TTL_MS = 60 * 60 * 1000;
+const DEFAULT_KBBI_FETCH_TIMEOUT_MS = 45_000;
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -46,6 +47,7 @@ const envSchema = z
     ),
     RATE_LIMIT_SCRAPER_MAX: positiveIntegerEnv("RATE_LIMIT_SCRAPER_MAX", DEFAULT_SCRAPER_RATE_LIMIT_MAX),
     WIKIQUOTE_CACHE_TTL_MS: positiveIntegerEnv("WIKIQUOTE_CACHE_TTL_MS", DEFAULT_WIKIQUOTE_CACHE_TTL_MS),
+    KBBI_FETCH_TIMEOUT_MS: positiveIntegerEnv("KBBI_FETCH_TIMEOUT_MS", DEFAULT_KBBI_FETCH_TIMEOUT_MS),
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
     SUPABASE_ANON_KEY: optionalTrimmedString,
     SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
@@ -92,6 +94,9 @@ export type Config = {
   cache: {
     wikiquoteTtlMs: number;
   };
+  upstream: {
+    kbbiFetchTimeoutMs: number;
+  };
 };
 
 const config: Config = {
@@ -118,6 +123,9 @@ const config: Config = {
   },
   cache: {
     wikiquoteTtlMs: parsedEnv.WIKIQUOTE_CACHE_TTL_MS,
+  },
+  upstream: {
+    kbbiFetchTimeoutMs: parsedEnv.KBBI_FETCH_TIMEOUT_MS,
   },
 };
 

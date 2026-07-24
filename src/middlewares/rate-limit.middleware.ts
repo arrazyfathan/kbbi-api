@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import config from "../config";
 import { rateLimitedError } from "../lib/api-error";
+import { getRequestId, setRequestIdHeader } from "../lib/request-id";
 
 type RateLimitConfig = {
   windowMs: number;
@@ -20,11 +21,17 @@ export function createRateLimiter(options: RateLimitConfig) {
 
 export function rateLimitHandler(req: Request, res: Response) {
   const error = rateLimitedError();
+  const requestId = getRequestId(req);
+
+  if (requestId) {
+    setRequestIdHeader(res, requestId);
+  }
 
   res.status(429).json({
     success: false,
     message: error.message,
     code: error.code,
+    ...(requestId ? { requestId } : {}),
   });
 }
 

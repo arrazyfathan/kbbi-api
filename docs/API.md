@@ -6,13 +6,16 @@
 
 ## Error Response Contract
 
-All API error responses include a stable error code:
+Every API response includes an `x-request-id` response header. Clients may send `X-Request-Id` to provide their own correlation ID; when omitted, the API generates one. Request and error logs use the same request ID.
+
+All API error responses include a stable error code and the request ID:
 
 ```json
 {
   "success": false,
   "message": "Human-readable error message",
-  "code": "VALIDATION_ERROR"
+  "code": "VALIDATION_ERROR",
+  "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
 }
 ```
 
@@ -23,6 +26,7 @@ Validation errors include `details` when useful:
   "success": false,
   "message": "Query parameter 'q' is required",
   "code": "VALIDATION_ERROR",
+  "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a",
   "details": [
     {
       "field": "q",
@@ -92,6 +96,7 @@ Searches for a specific word in the KBBI database.
 - **URL Params**:
   - `word` (Required): The word to search for.
 - **Headers**:
+  - `X-Request-Id` (Optional): Client-provided request correlation ID. The API returns the same value in the `x-request-id` response header, or generates one when this header is missing.
   - `X-Visitor-Id` (Optional): Stable anonymous UUID generated and stored by the mobile client. When present, the API counts one unique visit per word per visitor per day.
 - **Success Response**:
   - **Code**: 200 OK
@@ -128,7 +133,8 @@ Searches for a specific word in the KBBI database.
     {
       "success": false,
       "message": "Word not found",
-      "code": "NOT_FOUND"
+      "code": "NOT_FOUND",
+      "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
   - **500 Internal Server Error**:
@@ -136,7 +142,8 @@ Searches for a specific word in the KBBI database.
     {
       "success": false,
       "message": "Internal server error",
-      "code": "INTERNAL_ERROR"
+      "code": "INTERNAL_ERROR",
+      "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
 
@@ -263,6 +270,7 @@ Searches proverbs by text and returns paginated results.
       "success": false,
       "message": "Query parameter 'q' is required",
       "code": "VALIDATION_ERROR",
+      "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a",
       "details": [
         {
           "field": "q",
@@ -304,7 +312,8 @@ Returns a proverb and its meaning from the proverb detail page.
     {
       "success": false,
       "message": "Proverb not found",
-      "code": "NOT_FOUND"
+      "code": "NOT_FOUND",
+      "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
 
@@ -377,6 +386,7 @@ Returns one Indonesian figure from a Wikiquote slug.
     {
       "success": false,
       "message": "Indonesian figure not found",
-      "code": "NOT_FOUND"
+      "code": "NOT_FOUND",
+      "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```

@@ -47,13 +47,17 @@ describe("OpenAPI documentation", () => {
 
   it("documents visitor tracking, pagination, and reusable errors", () => {
     const searchParameters = openApiSpec.paths["/search/{word}"].get.parameters;
+    const rootParameters = openApiSpec.paths["/"].get.parameters;
     const paginatedProverbData = openApiSpec.components.schemas.PaginatedProverbList.properties.pagination["$ref"];
     const paginatedFigureData =
       openApiSpec.components.schemas.PaginatedIndonesianFigureList.properties.pagination["$ref"];
     const validationErrorSchema =
       openApiSpec.components.responses.ValidationError.content["application/json"].schema["$ref"];
 
+    expect(rootParameters).toContainEqual({ $ref: "#/components/parameters/RequestIdHeader" });
     expect(searchParameters).toContainEqual({ $ref: "#/components/parameters/VisitorIdHeader" });
+    expect(searchParameters).toContainEqual({ $ref: "#/components/parameters/RequestIdHeader" });
+    expect(openApiSpec.components.schemas.ErrorResponse.required).toContain("requestId");
     expect(paginatedProverbData).toBe("#/components/schemas/Pagination");
     expect(paginatedFigureData).toBe("#/components/schemas/Pagination");
     expect(validationErrorSchema).toBe("#/components/schemas/ErrorResponse");

@@ -5,24 +5,26 @@ import { API_ERROR_CODES, notFoundError, validationError } from "../src/lib/api-
 
 describe("buildErrorResponse", () => {
   it("hides unknown error details in production", () => {
-    expect(buildErrorResponse(new Error("database password leaked"), "production")).toEqual({
+    expect(buildErrorResponse(new Error("database password leaked"), "production", "request-1")).toEqual({
       statusCode: 500,
       body: {
         success: false,
         message: "Internal server error",
         code: API_ERROR_CODES.INTERNAL_ERROR,
+        requestId: "request-1",
       },
     });
   });
 
   it("includes unknown error details outside production", () => {
-    expect(buildErrorResponse(new Error("local debugging detail"), "development")).toEqual({
+    expect(buildErrorResponse(new Error("local debugging detail"), "development", "request-1")).toEqual({
       statusCode: 500,
       body: {
         success: false,
         message: "Internal server error",
         code: API_ERROR_CODES.INTERNAL_ERROR,
         error: "local debugging detail",
+        requestId: "request-1",
       },
     });
   });
@@ -38,6 +40,7 @@ describe("buildErrorResponse", () => {
           },
         ]),
         "production",
+        "request-1",
       ),
     ).toEqual({
       statusCode: 400,
@@ -52,17 +55,19 @@ describe("buildErrorResponse", () => {
             reason: "Required non-empty string",
           },
         ],
+        requestId: "request-1",
       },
     });
   });
 
   it("serializes not found errors", () => {
-    expect(buildErrorResponse(notFoundError("Word not found"), "production")).toEqual({
+    expect(buildErrorResponse(notFoundError("Word not found"), "production", "request-1")).toEqual({
       statusCode: 404,
       body: {
         success: false,
         message: "Word not found",
         code: API_ERROR_CODES.NOT_FOUND,
+        requestId: "request-1",
       },
     });
   });
@@ -74,6 +79,7 @@ describe("buildErrorResponse", () => {
           statusCode: 504,
         }),
         "production",
+        "request-1",
       ),
     ).toEqual({
       statusCode: 504,
@@ -81,6 +87,7 @@ describe("buildErrorResponse", () => {
         success: false,
         message: "Upstream request timed out",
         code: API_ERROR_CODES.UPSTREAM_TIMEOUT,
+        requestId: "request-1",
       },
     });
   });
@@ -92,6 +99,7 @@ describe("buildErrorResponse", () => {
           statusCode: 502,
         }),
         "production",
+        "request-1",
       ),
     ).toEqual({
       statusCode: 502,
@@ -99,6 +107,7 @@ describe("buildErrorResponse", () => {
         success: false,
         message: "Upstream service is unavailable",
         code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+        requestId: "request-1",
       },
     });
   });

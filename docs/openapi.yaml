@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: New KBBI API
   version: 1.1.0
-  description: Scraper API for KBBI definitions, Indonesian proverbs, and Indonesian figure quotes.
+  description: Scraper API for KBBI definitions, Indonesian proverbs, and Indonesian figure quotes. Every response includes an x-request-id header for request correlation.
 servers:
   - url: /
     description: Same origin as the documentation page
@@ -18,6 +18,8 @@ paths:
       tags:
         - Metadata
       summary: Return API metadata and example URLs.
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
       responses:
         "200":
           description: API metadata.
@@ -58,6 +60,8 @@ paths:
       tags:
         - Health
       summary: Check Supabase connectivity.
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
       responses:
         "200":
           description: Supabase is reachable.
@@ -96,6 +100,7 @@ paths:
                     success: false
                     message: Supabase connection failed
                     code: UPSTREAM_UNAVAILABLE
+                    requestId: client-request-1
                     data:
                       connected: false
                       host: null
@@ -105,6 +110,7 @@ paths:
         - Words
       summary: Search a KBBI word.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/WordPath"
         - $ref: "#/components/parameters/VisitorIdHeader"
       responses:
@@ -152,6 +158,7 @@ paths:
         - Words
       summary: Return the most visited KBBI words.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/TopWordsLimit"
       responses:
         "200":
@@ -191,6 +198,7 @@ paths:
         - Proverbs
       summary: List Indonesian proverbs.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/ProverbLimit"
       responses:
@@ -235,6 +243,7 @@ paths:
         - Proverbs
       summary: Search Indonesian proverbs by text.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/SearchQuery"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/ProverbLimit"
@@ -261,6 +270,7 @@ paths:
         - Proverbs
       summary: Return one proverb detail page.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/ProverbSlug"
       responses:
         "200":
@@ -305,6 +315,7 @@ paths:
         - Indonesian Figures
       summary: List Indonesian figures.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/FigureLimit"
         - $ref: "#/components/parameters/IncludeFigureDetails"
@@ -349,6 +360,7 @@ paths:
         - Indonesian Figures
       summary: Search Indonesian figures by name.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/SearchQuery"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/FigureLimit"
@@ -376,6 +388,7 @@ paths:
         - Indonesian Figures
       summary: Return one Indonesian figure detail page.
       parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/FigureSlug"
       responses:
         "200":
@@ -418,6 +431,15 @@ paths:
           $ref: "#/components/responses/UpstreamTimeout"
 components:
   parameters:
+    RequestIdHeader:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Optional client-provided request correlation ID. The API returns this value in the x-request-id response header, or generates one when omitted.
+      schema:
+        type: string
+        minLength: 1
+      example: client-request-1
     WordPath:
       name: word
       in: path
@@ -528,6 +550,7 @@ components:
                 success: false
                 message: Query parameter 'q' is required
                 code: VALIDATION_ERROR
+                requestId: client-request-1
                 details:
                   - field: q
                     location: query
@@ -544,6 +567,7 @@ components:
                 success: false
                 message: Word not found
                 code: NOT_FOUND
+                requestId: client-request-1
     ProverbNotFound:
       description: Proverb was not found.
       content:
@@ -556,6 +580,7 @@ components:
                 success: false
                 message: Proverb not found
                 code: NOT_FOUND
+                requestId: client-request-1
     FigureNotFound:
       description: Indonesian figure was not found.
       content:
@@ -568,6 +593,7 @@ components:
                 success: false
                 message: Indonesian figure not found
                 code: NOT_FOUND
+                requestId: client-request-1
     RateLimited:
       description: Rate limit exceeded.
       content:
@@ -580,6 +606,7 @@ components:
                 success: false
                 message: Too many requests
                 code: RATE_LIMITED
+                requestId: client-request-1
     InternalError:
       description: Unexpected server error.
       content:
@@ -592,6 +619,7 @@ components:
                 success: false
                 message: Internal server error
                 code: INTERNAL_ERROR
+                requestId: client-request-1
     UpstreamUnavailable:
       description: Scraper, Supabase, or external service is unavailable.
       content:
@@ -604,6 +632,7 @@ components:
                 success: false
                 message: Upstream service is unavailable
                 code: UPSTREAM_UNAVAILABLE
+                requestId: client-request-1
     UpstreamTimeout:
       description: Scraper or external service timed out.
       content:
@@ -616,6 +645,7 @@ components:
                 success: false
                 message: Upstream request timed out
                 code: UPSTREAM_TIMEOUT
+                requestId: client-request-1
   schemas:
     RootResponse:
       type: object
@@ -651,6 +681,7 @@ components:
         - success
         - message
         - code
+        - requestId
       properties:
         success:
           type: boolean
@@ -659,6 +690,9 @@ components:
           type: string
         code:
           $ref: "#/components/schemas/ErrorCode"
+        requestId:
+          type: string
+          description: Request correlation ID matching the x-request-id response header.
         details:
           type: array
           items:

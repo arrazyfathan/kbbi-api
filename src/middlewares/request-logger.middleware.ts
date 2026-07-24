@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { Request, Response } from "express";
 import pinoHttp from "pino-http";
 import logger from "../lib/logger";
+import { resolveRequestId, setRequestIdHeader } from "../lib/request-id";
 
 export function shouldIgnoreRequestLog(req: Request): boolean {
   return req.path === "/favicon.ico" || req.url === "/favicon.ico";
@@ -13,10 +13,9 @@ export const requestLoggerMiddleware = pinoHttp({
     ignore: shouldIgnoreRequestLog,
   },
   genReqId: (req, res) => {
-    const header = req.headers["x-request-id"];
-    const requestId = Array.isArray(header) ? header[0] : header || randomUUID();
+    const requestId = resolveRequestId(req.headers["x-request-id"]);
 
-    res.setHeader("x-request-id", requestId);
+    setRequestIdHeader(res, requestId);
 
     return requestId;
   },

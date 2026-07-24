@@ -26,7 +26,9 @@ describe("rate limiting middleware", () => {
       success: false,
       message: "Too many requests",
       code: API_ERROR_CODES.RATE_LIMITED,
+      requestId: "request-1",
     });
+    expect(response.headers["x-request-id"]).toBe("request-1");
     expect(response.headers.ratelimit).toBeDefined();
     expect(response.headers["retry-after"]).toBeDefined();
   });
@@ -44,6 +46,7 @@ describe("rate limiting middleware", () => {
       success: false,
       message: "Too many requests",
       code: API_ERROR_CODES.RATE_LIMITED,
+      requestId: "request-1",
     });
 
     expect((await runRoute([globalLimiter], "/words/top")).statusCode).toBe(200);
@@ -88,6 +91,7 @@ function createMockRequest(path: string): Request {
       get: () => false,
     },
     headers: {},
+    id: "request-1",
     ip: "127.0.0.1",
     method: "GET",
     originalUrl: path,
