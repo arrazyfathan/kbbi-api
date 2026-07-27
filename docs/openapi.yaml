@@ -2,27 +2,36 @@ openapi: 3.1.0
 info:
   title: New KBBI API
   version: 1.1.0
+  contact:
+    name: Trianurdin B
   description: Scraper API for KBBI definitions, Indonesian proverbs, and Indonesian figure quotes. Every response includes an x-request-id header for request correlation.
 servers:
   - url: /
-    description: Same origin as the documentation page
+    description: Same origin as the documentation page.
 tags:
-  - name: Metadata
   - name: Health
-  - name: Words
-  - name: Proverbs
+    description: Runtime health and dependency connectivity checks.
   - name: Indonesian Figures
+    description: Indonesian figure profile and quote endpoints.
+  - name: Metadata
+    description: API discovery and documentation metadata.
+  - name: Proverbs
+    description: Indonesian proverb listing, search, and detail endpoints.
+  - name: Words
+    description: KBBI word search and visitor-count endpoints.
 paths:
   /:
     get:
       tags:
         - Metadata
       summary: Return API metadata and example URLs.
+      description: Returns a simple discovery payload with available endpoints and example URLs.
+      operationId: getApiMetadata
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
       responses:
         "200":
-          description: API metadata.
+          description: API metadata and example request URLs.
           content:
             application/json:
               schema:
@@ -60,6 +69,8 @@ paths:
       tags:
         - Health
       summary: Check Supabase connectivity.
+      description: Checks whether the configured Supabase project is reachable.
+      operationId: getSupabaseHealth
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
       responses:
@@ -94,28 +105,20 @@ paths:
                     properties:
                       data:
                         $ref: "#/components/schemas/SupabaseHealth"
-              examples:
-                disconnected:
-                  value:
-                    success: false
-                    message: Supabase connection failed
-                    code: UPSTREAM_UNAVAILABLE
-                    requestId: client-request-1
-                    data:
-                      connected: false
-                      host: null
   /search/{word}:
     get:
       tags:
         - Words
       summary: Search a KBBI word.
+      description: Searches KBBI for the requested word and optionally tracks a visitor-scoped daily visit.
+      operationId: searchWord
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/WordPath"
         - $ref: "#/components/parameters/VisitorIdHeader"
       responses:
         "200":
-          description: Search result.
+          description: KBBI word search result payload.
           content:
             application/json:
               schema:
@@ -157,12 +160,14 @@ paths:
       tags:
         - Words
       summary: Return the most visited KBBI words.
+      description: Returns the most visited words recorded by the visitor tracking store.
+      operationId: getTopWords
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/TopWordsLimit"
       responses:
         "200":
-          description: Top visited words.
+          description: Top visited word ranking payload.
           content:
             application/json:
               schema:
@@ -197,6 +202,8 @@ paths:
       tags:
         - Proverbs
       summary: List Indonesian proverbs.
+      description: Returns a paginated list of Indonesian proverbs from Wikiquote.
+      operationId: listProverbs
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/Page"
@@ -242,6 +249,8 @@ paths:
       tags:
         - Proverbs
       summary: Search Indonesian proverbs by text.
+      description: Searches Indonesian proverbs by required keyword and returns paginated matches.
+      operationId: searchProverbs
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/SearchQuery"
@@ -269,12 +278,14 @@ paths:
       tags:
         - Proverbs
       summary: Return one proverb detail page.
+      description: Returns the detail and meaning for a single proverb slug.
+      operationId: getProverb
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/ProverbSlug"
       responses:
         "200":
-          description: Proverb detail.
+          description: Indonesian proverb detail payload.
           content:
             application/json:
               schema:
@@ -314,6 +325,8 @@ paths:
       tags:
         - Indonesian Figures
       summary: List Indonesian figures.
+      description: Returns a paginated list of Indonesian figure summaries, with optional detail enrichment.
+      operationId: listIndonesianFigures
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/Page"
@@ -359,6 +372,8 @@ paths:
       tags:
         - Indonesian Figures
       summary: Search Indonesian figures by name.
+      description: Searches Indonesian figures by required keyword and returns paginated matches.
+      operationId: searchIndonesianFigures
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/SearchQuery"
@@ -387,6 +402,8 @@ paths:
       tags:
         - Indonesian Figures
       summary: Return one Indonesian figure detail page.
+      description: Returns the profile, description, photo, and quotes for a single Indonesian figure slug.
+      operationId: getIndonesianFigure
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/FigureSlug"
@@ -556,7 +573,7 @@ components:
                     location: query
                     reason: Required non-empty string
     WordNotFound:
-      description: Word was not found.
+      description: Requested KBBI word was not found.
       content:
         application/json:
           schema:
@@ -648,6 +665,7 @@ components:
                 requestId: client-request-1
   schemas:
     RootResponse:
+      description: Discovery payload returned by the API root endpoint.
       type: object
       required:
         - message
@@ -665,6 +683,7 @@ components:
           items:
             type: string
     SuccessResponse:
+      description: Common envelope used by successful API responses.
       type: object
       required:
         - success
@@ -676,6 +695,7 @@ components:
         message:
           type: string
     ErrorResponse:
+      description: Common envelope emitted by error and rate-limit middleware.
       type: object
       required:
         - success
@@ -701,6 +721,7 @@ components:
           type: string
           description: Non-production diagnostic detail for unexpected errors.
     ErrorCode:
+      description: Stable machine-readable error code values.
       type: string
       enum:
         - VALIDATION_ERROR
@@ -710,6 +731,7 @@ components:
         - UPSTREAM_UNAVAILABLE
         - INTERNAL_ERROR
     ValidationErrorDetail:
+      description: Field-level validation failure details.
       type: object
       required:
         - field
@@ -727,6 +749,7 @@ components:
         reason:
           type: string
     Definition:
+      description: One KBBI definition entry for a headword.
       type: object
       required:
         - wordClass
@@ -737,6 +760,7 @@ components:
         description:
           type: string
     Entry:
+      description: KBBI headword and its definitions.
       type: object
       required:
         - headword
@@ -749,6 +773,7 @@ components:
           items:
             $ref: "#/components/schemas/Definition"
     KbbiSearchResult:
+      description: Data returned from a KBBI word search.
       type: object
       required:
         - word
@@ -758,16 +783,17 @@ components:
         word:
           type: string
         visitorCount:
-          type:
-            - integer
-            - "null"
-          minimum: 0
+          anyOf:
+            - type: integer
+              minimum: 0
+            - type: "null"
           description: Null when X-Visitor-Id is missing or visit tracking is unavailable.
         entries:
           type: array
           items:
             $ref: "#/components/schemas/Entry"
     TopVisitedWord:
+      description: One ranked word visit-count item.
       type: object
       required:
         - word
@@ -779,6 +805,7 @@ components:
           type: integer
           minimum: 0
     TopVisitedWordsResult:
+      description: Collection of the most visited KBBI words.
       type: object
       required:
         - count
@@ -821,6 +848,7 @@ components:
         hasPreviousPage:
           type: boolean
     Proverb:
+      description: Indonesian proverb summary item.
       type: object
       required:
         - text
@@ -837,6 +865,7 @@ components:
           type: string
           format: uri
     ProverbDetail:
+      description: Indonesian proverb detail with meaning.
       allOf:
         - $ref: "#/components/schemas/Proverb"
         - type: object
@@ -844,10 +873,11 @@ components:
             - meaning
           properties:
             meaning:
-              type:
-                - string
-                - "null"
+              anyOf:
+                - type: string
+                - type: "null"
     PaginatedProverbList:
+      description: Paginated Indonesian proverb result data.
       type: object
       required:
         - source
@@ -864,6 +894,7 @@ components:
           items:
             $ref: "#/components/schemas/Proverb"
     PaginatedProverbResponse:
+      description: Successful paginated proverb response envelope.
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
         - type: object
@@ -873,6 +904,7 @@ components:
             data:
               $ref: "#/components/schemas/PaginatedProverbList"
     IndonesianFigureSummary:
+      description: Indonesian figure summary item.
       type: object
       required:
         - name
@@ -880,15 +912,16 @@ components:
         - sourceUrl
       properties:
         name:
-          type:
-            - string
-            - "null"
+          anyOf:
+            - type: string
+            - type: "null"
         slug:
           type: string
         sourceUrl:
           type: string
           format: uri
     IndonesianFigure:
+      description: Indonesian figure detail with profile and quotes.
       allOf:
         - $ref: "#/components/schemas/IndonesianFigureSummary"
         - type: object
@@ -898,21 +931,22 @@ components:
             - quotes
           properties:
             photo:
-              type:
-                - string
-                - "null"
-              format: uri
+              anyOf:
+                - type: string
+                  format: uri
+                - type: "null"
             description:
-              type:
-                - string
-                - "null"
+              anyOf:
+                - type: string
+                - type: "null"
             quotes:
-              type:
-                - array
-                - "null"
-              items:
-                type: string
+              anyOf:
+                - type: array
+                  items:
+                    type: string
+                - type: "null"
     PaginatedIndonesianFigureList:
+      description: Paginated Indonesian figure result data.
       type: object
       required:
         - source
@@ -929,6 +963,7 @@ components:
           items:
             $ref: "#/components/schemas/IndonesianFigureSummary"
     PaginatedFigureResponse:
+      description: Successful paginated Indonesian figure response envelope.
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
         - type: object
@@ -938,6 +973,7 @@ components:
             data:
               $ref: "#/components/schemas/PaginatedIndonesianFigureList"
     SupabaseHealth:
+      description: Supabase connectivity status data.
       type: object
       required:
         - connected
@@ -946,14 +982,15 @@ components:
         connected:
           type: boolean
         host:
-          type:
-            - string
-            - "null"
+          anyOf:
+            - type: string
+            - type: "null"
         status:
           type: integer
         statusText:
           type: string
     SupabaseHealthResponse:
+      description: Successful Supabase health response envelope.
       allOf:
         - $ref: "#/components/schemas/SuccessResponse"
         - type: object

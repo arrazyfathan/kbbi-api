@@ -27,7 +27,7 @@ describe("OpenAPI documentation", () => {
   it("documents every registered API endpoint", () => {
     expect(openApiSpec.servers).toContainEqual({
       url: "/",
-      description: "Same origin as the documentation page",
+      description: "Same origin as the documentation page.",
     });
     expect(Object.keys(openApiSpec.paths)).toEqual(
       expect.arrayContaining([
