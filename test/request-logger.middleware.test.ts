@@ -1,7 +1,7 @@
 import { Request } from "express";
 import { describe, expect, it } from "vitest";
 import { resolveRequestId } from "../src/lib/request-id";
-import { shouldIgnoreRequestLog } from "../src/middlewares/request-logger.middleware";
+import { redactVisitorIdHeader, shouldIgnoreRequestLog } from "../src/middlewares/request-logger.middleware";
 
 describe("request logger middleware", () => {
   it("ignores browser favicon requests", () => {
@@ -24,5 +24,17 @@ describe("request logger middleware", () => {
     expect(resolveRequestId(undefined)).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
+  });
+
+  it("redacts visitor IDs from logged headers", () => {
+    const headers = redactVisitorIdHeader({
+      host: "localhost:3000",
+      "x-visitor-id": "raw-visitor-id",
+    });
+
+    expect(headers).toEqual({
+      host: "localhost:3000",
+      "x-visitor-id": "[Redacted]",
+    });
   });
 });

@@ -48,6 +48,7 @@ const envSchema = z
     RATE_LIMIT_SCRAPER_MAX: positiveIntegerEnv("RATE_LIMIT_SCRAPER_MAX", DEFAULT_SCRAPER_RATE_LIMIT_MAX),
     WIKIQUOTE_CACHE_TTL_MS: positiveIntegerEnv("WIKIQUOTE_CACHE_TTL_MS", DEFAULT_WIKIQUOTE_CACHE_TTL_MS),
     KBBI_FETCH_TIMEOUT_MS: positiveIntegerEnv("KBBI_FETCH_TIMEOUT_MS", DEFAULT_KBBI_FETCH_TIMEOUT_MS),
+    NODE_ENV: optionalTrimmedString,
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
     SUPABASE_ANON_KEY: optionalTrimmedString,
     SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
@@ -62,6 +63,14 @@ const envSchema = z
         code: "custom",
         message: "Supabase config must include SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
         path: hasSupabaseUrl ? ["SUPABASE_ANON_KEY"] : ["SUPABASE_URL"],
+      });
+    }
+
+    if (env.NODE_ENV === "production" && !env.VISITOR_HASH_SALT) {
+      ctx.addIssue({
+        code: "custom",
+        message: "VISITOR_HASH_SALT is required in production",
+        path: ["VISITOR_HASH_SALT"],
       });
     }
   });

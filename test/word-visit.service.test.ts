@@ -11,9 +11,19 @@ import {
 describe("WordVisitService", () => {
   it("normalizes words and hashes visitor identifiers", () => {
     expect(normalizeWord("  Demokrasi  ")).toBe("demokrasi");
-    expect(hashVisitorId("mobile-visitor-1")).toBe(createHash("sha256").update("mobile-visitor-1").digest("hex"));
+    expect(hashVisitorId("mobile-visitor-1", "salt-1")).toBe(
+      createHash("sha256").update("salt-1").update("\0").update("mobile-visitor-1").digest("hex"),
+    );
     expect(hashVisitorId("   ")).toBeNull();
     expect(hashVisitorId(undefined)).toBeNull();
+  });
+
+  it("generates different hashes for the same visitor with different salts", () => {
+    const firstHash = hashVisitorId("mobile-visitor-1", "salt-1");
+    const secondHash = hashVisitorId("mobile-visitor-1", "salt-2");
+
+    expect(firstHash).not.toBe(secondHash);
+    expect(hashVisitorId("mobile-visitor-1", "salt-1")).toBe(firstHash);
   });
 
   it("returns null without a visitor id", async () => {
@@ -31,6 +41,7 @@ describe("WordVisitService", () => {
       WordVisitService.trackWordVisit(" Demokrasi ", "visitor-1", {
         client,
         now: new Date("2026-07-17T12:00:00.000Z"),
+        visitorHashSalt: "visit-salt",
       }),
     ).resolves.toBe(3);
 
@@ -38,7 +49,7 @@ describe("WordVisitService", () => {
       {
         values: {
           word: "demokrasi",
-          visitor_hash: createHash("sha256").update("visitor-1").digest("hex"),
+          visitor_hash: createHash("sha256").update("visit-salt").update("\0").update("visitor-1").digest("hex"),
           visited_date: "2026-07-17",
         },
         options: {

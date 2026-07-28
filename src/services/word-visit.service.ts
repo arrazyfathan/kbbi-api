@@ -1,12 +1,15 @@
 import { createHash } from "node:crypto";
+import config from "../config";
 import { supabase } from "../config/supabase";
 import { TopVisitedWord } from "../interfaces/kbbi.interface";
 import { upstreamUnavailableError } from "../lib/api-error";
+import logger from "../lib/logger";
 
 const WORD_VISITS_TABLE = "word_visits";
 const TOP_WORD_VISITS_VIEW = "top_word_visits";
 const DEFAULT_TOP_WORDS_LIMIT = 10;
 const MAX_TOP_WORDS_LIMIT = 100;
+let didWarnMissingVisitorHashSalt = false;
 
 type SupabaseQueryResult<T = unknown> = {
   data?: T;
@@ -44,10 +47,10 @@ export class WordVisitService {
   static async trackWordVisit(
     word: string,
     visitorId: string | undefined,
-    options: { client?: SupabaseLike; now?: Date } = {},
+    options: { client?: SupabaseLike; now?: Date; visitorHashSalt?: string } = {},
   ): Promise<number | null> {
     const normalizedWord = normalizeWord(word);
-    const visitorHash = hashVisitorId(visitorId);
+    const visitorHash = hashVisitorId(visitorId, options.visitorHashSalt ?? config.visitorHashSalt);
 
     if (!normalizedWord || !visitorHash) {
       return null;
@@ -121,14 +124,21 @@ export function normalizeWord(word: string): string {
   return word.trim().toLowerCase();
 }
 
-export function hashVisitorId(visitorId: string | undefined): string | null {
+export function hashVisitorId(visitorId: string | undefined, salt = config.visitorHashSalt): string | null {
   const normalizedVisitorId = visitorId?.trim();
 
   if (!normalizedVisitorId) {
     return null;
   }
 
-  return createHash("sha256").update(normalizedVisitorId).digest("hex");
+  const normalizedSalt = salt?.trim() ?? "";
+
+  if (!normalizedSalt && process.env.NODE_ENV !== "production" && !didWarnMissingVisitorHashSalt) {
+    didWarnMissingVisitorHashSalt = true;
+    logger.warn("VISITOR_HASH_SALT is not configured. Visitor hashes are unsalted outside production.");
+  }
+
+  return createHash("sha256").update(normalizedSalt).update("\0").update(normalizedVisitorId).digest("hex");
 }
 
 export function normalizeTopWordsLimit(limit: number): number {

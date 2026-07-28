@@ -97,7 +97,7 @@ Searches for a specific word in the KBBI database.
   - `word` (Required): The word to search for.
 - **Headers**:
   - `X-Request-Id` (Optional): Client-provided request correlation ID. The API returns the same value in the `x-request-id` response header, or generates one when this header is missing.
-  - `X-Visitor-Id` (Optional): Stable anonymous UUID generated and stored by the mobile client. When present, the API counts one unique visit per word per visitor per day.
+  - `X-Visitor-Id` (Optional): Stable anonymous UUID generated and stored by the mobile client. When present, the API hashes it with the server-side visitor salt and counts one unique visit per word per visitor per day.
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -126,7 +126,7 @@ Searches for a specific word in the KBBI database.
       }
     }
     ```
-  - `visitorCount` is `null` when `X-Visitor-Id` is missing or Supabase tracking is unavailable.
+  - `visitorCount` is `null` when `X-Visitor-Id` is missing or Supabase tracking is unavailable. Raw visitor IDs are not stored or logged.
 - **Error Responses**:
   - **404 Not Found**:
     ```json

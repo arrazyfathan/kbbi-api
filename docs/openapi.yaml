@@ -470,7 +470,7 @@ components:
       name: X-Visitor-Id
       in: header
       required: false
-      description: Stable anonymous client identifier. When present, the API counts one unique visit per word per visitor per day.
+      description: Stable anonymous client identifier. When present, the API hashes it with the server-side visitor salt and counts one unique visit per word per visitor per day.
       schema:
         type: string
         minLength: 1

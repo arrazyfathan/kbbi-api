@@ -9,6 +9,7 @@ const CONFIG_ENV_KEYS = [
   "RATE_LIMIT_SCRAPER_MAX",
   "WIKIQUOTE_CACHE_TTL_MS",
   "KBBI_FETCH_TIMEOUT_MS",
+  "NODE_ENV",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -104,6 +105,23 @@ describe("config", () => {
     expect(env).not.toHaveProperty("SUPABASE_URL");
     expect(env).not.toHaveProperty("SUPABASE_ANON_KEY");
     expect(env).not.toHaveProperty("SUPABASE_SERVICE_ROLE_KEY");
+  });
+
+  it("allows missing visitor hash salt outside production", async () => {
+    const { parseEnv } = await import("../src/config");
+
+    expect(parseEnv({ NODE_ENV: "development" }).VISITOR_HASH_SALT).toBeUndefined();
+    expect(parseEnv({ NODE_ENV: "test", VISITOR_HASH_SALT: "   " }).VISITOR_HASH_SALT).toBeUndefined();
+  });
+
+  it("requires visitor hash salt in production", async () => {
+    const { parseEnv } = await import("../src/config");
+
+    expect(() => parseEnv({ NODE_ENV: "production" })).toThrow(/VISITOR_HASH_SALT/);
+    expect(() => parseEnv({ NODE_ENV: "production", VISITOR_HASH_SALT: "   " })).toThrow(/VISITOR_HASH_SALT/);
+    expect(parseEnv({ NODE_ENV: "production", VISITOR_HASH_SALT: "production-salt" }).VISITOR_HASH_SALT).toBe(
+      "production-salt",
+    );
   });
 
   it("rejects invalid URL values with clear variable names", async () => {

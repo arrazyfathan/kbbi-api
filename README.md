@@ -54,7 +54,7 @@ RATE_LIMIT_SCRAPER_WINDOW_MS=900000
 RATE_LIMIT_SCRAPER_MAX=30
 WIKIQUOTE_CACHE_TTL_MS=3600000
 KBBI_FETCH_TIMEOUT_MS=45000
-# Optional. Reserved for future salted visitor hashing support.
+# Required in production. Use a long random server-only secret for visitor ID hashing.
 VISITOR_HASH_SALT=replace-with-random-secret
 
 # Optional for scraping endpoints. Required together for visit tracking and /words/top.
@@ -77,9 +77,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | Local/dev fallback | Supabase anon key. Only use for local development unless you add explicit public RLS policies.                    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Production         | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
-| `VISITOR_HASH_SALT`            | No                 | Reserved for future salted visitor hashing support. Not required by the current implementation.                   |
+| `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                    |
 
-Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error.
+Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
 
 Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. The cache is process-local, resets on restart, and is not shared across multiple deployed instances.
 
@@ -283,7 +283,9 @@ For production deployment:
 
 ## Visit Tracking Behavior
 
-Clients may send `X-Visitor-Id` when calling `GET /search/:word`. The API hashes this value before storage and counts one unique visit per word, visitor, and day. Search responses include `visitorCount`; it is `null` when the header is missing or Supabase tracking is unavailable.
+Clients may send `X-Visitor-Id` when calling `GET /search/:word`. The API combines this value with `VISITOR_HASH_SALT`, stores only the resulting SHA-256 hash, and counts one unique visit per word, visitor, and day. Raw visitor IDs are not stored or logged. Search responses include `visitorCount`; it is `null` when the header is missing or Supabase tracking is unavailable.
+
+Changing `VISITOR_HASH_SALT` changes the generated visitor hashes, so existing visitor identity buckets will no longer match new requests.
 
 ## License
 
