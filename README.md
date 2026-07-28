@@ -59,9 +59,10 @@ VISITOR_HASH_SALT=replace-with-random-secret
 
 # Optional for scraping endpoints. Required together for visit tracking and /words/top.
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-# Required in production for visit tracking. Used before SUPABASE_ANON_KEY when present.
+# Required for visit tracking with the bundled migrations.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# Optional only if you add explicit public grants and RLS policies.
+SUPABASE_ANON_KEY=your-anon-key
 ```
 
 | Variable                       | Required           | Description                                                                                                       |
@@ -75,8 +76,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 | `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.  |
 | `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).   |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
-| `SUPABASE_ANON_KEY`            | Local/dev fallback | Supabase anon key. Only use for local development unless you add explicit public RLS policies.                    |
-| `SUPABASE_SERVICE_ROLE_KEY`    | Production         | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
+| `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.    |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
 | `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                    |
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
@@ -105,9 +106,10 @@ npm install
 supabase/migrations/001_create_word_visits.sql
 supabase/migrations/002_create_top_word_visits_view.sql
 supabase/migrations/20260722022955_secure_word_visits_rls.sql
+supabase/migrations/20260728021955_improve_word_visit_indexes_rls_docs.sql
 ```
 
-The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /words/top`. Row-Level Security is enabled and direct `anon`/`authenticated` access is revoked because this API accesses Supabase through the backend service role.
+The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /words/top`. Row-Level Security is enabled and direct `anon`/`authenticated` access is revoked because this API accesses Supabase through the backend service role. Do not expose the service role key to browser or mobile clients.
 
 ### Local Supabase CLI
 
@@ -125,11 +127,11 @@ Reset the local database and apply migrations:
 supabase db reset
 ```
 
-Use the local API URL and anon key printed by `supabase start` in `.env`:
+Use the local API URL and service role key printed by `supabase start` in `.env`:
 
 ```env
 SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_ANON_KEY=your-local-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-local-service-role-key
 ```
 
 ### Migration Files
@@ -138,9 +140,16 @@ SUPABASE_ANON_KEY=your-local-anon-key
 supabase/migrations/001_create_word_visits.sql
 supabase/migrations/002_create_top_word_visits_view.sql
 supabase/migrations/20260722022955_secure_word_visits_rls.sql
+supabase/migrations/20260728021955_improve_word_visit_indexes_rls_docs.sql
 ```
 
-The first migration creates `public.word_visits` and an index on `word`. The second migration creates `public.top_word_visits`, an aggregate view used by the top visited words endpoint. The third migration enables RLS and restricts table/view access to the backend service role.
+The first migration creates `public.word_visits` and an index on `word`. The second migration creates `public.top_word_visits`, an aggregate view used by the top visited words endpoint. The third migration enables RLS and restricts table/view access to the backend service role. The fourth migration documents the access-control decision and adds composite indexes for current and likely query patterns:
+
+- `(word, visited_date)` supports per-word counts plus date-bounded word analytics.
+- `(visitor_hash, visited_date)` supports visitor/day analysis without storing raw visitor IDs.
+- The existing unique constraint on `(word, visitor_hash, visited_date)` remains the daily de-duplication and upsert conflict target.
+
+`top_word_visits` intentionally remains a regular view so `/words/top` reads live counts. Revisit a materialized view only if production volume makes the aggregate slow and a refresh cadence is acceptable.
 
 ### Verify Supabase
 
