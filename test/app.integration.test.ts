@@ -1,41 +1,20 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/app";
+import { AppDependencies } from "../src/app-dependencies";
+import HealthController from "../src/controllers/health.controller";
+import IndonesianFigureController from "../src/controllers/indonesian-figure.controller";
+import KbbiController from "../src/controllers/kbbi.controller";
+import ProverbController from "../src/controllers/proverb.controller";
+import WordController from "../src/controllers/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
-import { KbbiService } from "../src/services/kbbi.service";
-import { ProverbService } from "../src/services/proverb.service";
-import { WordVisitService } from "../src/services/word-visit.service";
 
-vi.mock("../src/services/kbbi.service", () => ({
-  KbbiService: {
-    search: vi.fn(),
-  },
-}));
-
-vi.mock("../src/services/proverb.service", () => ({
-  ProverbService: {
-    search: vi.fn(),
-  },
-}));
-
-vi.mock("../src/services/word-visit.service", async () => {
-  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>(
-    "../src/services/word-visit.service",
-  );
-
-  return {
-    ...actual,
-    WordVisitService: {
-      getTopVisitedWords: vi.fn(),
-      trackWordVisit: vi.fn(),
-    },
-  };
-});
+let testServices: ReturnType<typeof createTestServices>;
 
 describe("Express app integration", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    testServices = createTestServices();
   });
 
   it("returns root endpoint metadata", async () => {
@@ -56,20 +35,20 @@ describe("Express app integration", () => {
   });
 
   it("searches a word through the real route and middleware stack", async () => {
-    vi.mocked(KbbiService.search).mockResolvedValueOnce([
+    testServices.kbbiService.search.mockResolvedValueOnce([
       {
         headword: "demokrasi",
         definitions: [{ wordClass: "n[Nomina]", description: "pemerintahan rakyat" }],
       },
     ]);
-    vi.mocked(WordVisitService.trackWordVisit).mockResolvedValueOnce(12);
+    testServices.wordVisitService.trackWordVisit.mockResolvedValueOnce(12);
 
     const response = await request(createApp()).get("/search/Demokrasi").set("X-Visitor-Id", "client-1");
 
     expect(response.status).toBe(200);
     expect(response.headers["x-request-id"]).toBeDefined();
-    expect(KbbiService.search).toHaveBeenCalledWith("Demokrasi");
-    expect(WordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "client-1");
+    expect(testServices.kbbiService.search).toHaveBeenCalledWith("Demokrasi");
+    expect(testServices.wordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "client-1");
     expect(response.body).toEqual({
       success: true,
       message: "Search successful",
@@ -87,7 +66,7 @@ describe("Express app integration", () => {
   });
 
   it("preserves client-provided request IDs in response headers", async () => {
-    vi.mocked(WordVisitService.getTopVisitedWords).mockResolvedValueOnce([]);
+    testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([]);
 
     const response = await request(createApp()).get("/words/top?limit=2").set("X-Request-Id", "client-request-1");
 
@@ -96,7 +75,7 @@ describe("Express app integration", () => {
   });
 
   it("returns top visited words through HTTP", async () => {
-    vi.mocked(WordVisitService.getTopVisitedWords).mockResolvedValueOnce([
+    testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([
       { word: "demokrasi", visitorCount: 12 },
       { word: "ajar", visitorCount: 8 },
     ]);
@@ -104,7 +83,7 @@ describe("Express app integration", () => {
     const response = await request(createApp()).get("/words/top?limit=2");
 
     expect(response.status).toBe(200);
-    expect(WordVisitService.getTopVisitedWords).toHaveBeenCalledWith(2);
+    expect(testServices.wordVisitService.getTopVisitedWords).toHaveBeenCalledWith(2);
     expect(response.body).toEqual({
       success: true,
       message: "Top visited words fetched successfully",
@@ -124,7 +103,7 @@ describe("Express app integration", () => {
 
     expect(response.status).toBe(400);
     expect(requestId).toBeDefined();
-    expect(ProverbService.search).not.toHaveBeenCalled();
+    expect(testServices.proverbService.search).not.toHaveBeenCalled();
     expect(response.body).toEqual({
       success: false,
       message: "Query parameter 'q' is required",
@@ -154,7 +133,7 @@ describe("Express app integration", () => {
   });
 
   it("maps upstream failures to public HTTP errors", async () => {
-    vi.mocked(KbbiService.search).mockRejectedValueOnce(
+    testServices.kbbiService.search.mockRejectedValueOnce(
       new UpstreamHttpError("Upstream service failed", {
         statusCode: 502,
         upstreamStatus: 503,
@@ -172,10 +151,44 @@ describe("Express app integration", () => {
       code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
       requestId,
     });
-    expect(WordVisitService.trackWordVisit).not.toHaveBeenCalled();
+    expect(testServices.wordVisitService.trackWordVisit).not.toHaveBeenCalled();
   });
 });
 
 function createApp() {
-  return new App().app;
+  return new App(createTestDependencies(testServices)).app;
+}
+
+function createTestServices() {
+  return {
+    indonesianFigureService: {
+      list: vi.fn(),
+      search: vi.fn(),
+      detail: vi.fn(),
+    },
+    kbbiService: {
+      search: vi.fn(),
+    },
+    proverbService: {
+      list: vi.fn(),
+      search: vi.fn(),
+      detail: vi.fn(),
+    },
+    wordVisitService: {
+      getTopVisitedWords: vi.fn(),
+      trackWordVisit: vi.fn(),
+    },
+  };
+}
+
+function createTestDependencies(services: ReturnType<typeof createTestServices>): AppDependencies {
+  return {
+    controllers: {
+      healthController: HealthController,
+      indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
+      kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
+      proverbController: new ProverbController(services.proverbService),
+      wordController: new WordController(services.wordVisitService),
+    },
+  };
 }

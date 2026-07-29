@@ -16,11 +16,11 @@ describe("ProverbService", () => {
     let now = 0;
     const getScraperHtml = vi.fn(async () => fixture("proverb-list.html"));
     const { ProverbService } = await loadService(getScraperHtml);
-    ProverbService.configureCacheForTests({ now: () => now });
+    const service = new ProverbService({ now: () => now });
 
-    await ProverbService.list(1, 20);
+    await service.list(1, 20);
     now = 1000;
-    await ProverbService.search("air", 1, 20);
+    await service.search("air", 1, 20);
 
     expect(getScraperHtml).toHaveBeenCalledTimes(1);
   });
@@ -29,11 +29,11 @@ describe("ProverbService", () => {
     let now = 0;
     const getScraperHtml = vi.fn(async () => fixture("proverb-list.html"));
     const { ProverbService } = await loadService(getScraperHtml);
-    ProverbService.configureCacheForTests({ now: () => now });
+    const service = new ProverbService({ now: () => now });
 
-    await ProverbService.list(1, 20);
+    await service.list(1, 20);
     now = 3600000;
-    await ProverbService.list(1, 20);
+    await service.list(1, 20);
 
     expect(getScraperHtml).toHaveBeenCalledTimes(2);
   });
@@ -44,11 +44,11 @@ describe("ProverbService", () => {
       url.includes("Peribahasa_Indonesia") ? fixture("proverb-list.html") : fixture("proverb-detail.html"),
     );
     const { ProverbService } = await loadService(getScraperHtml);
-    ProverbService.configureCacheForTests({ now: () => now });
+    const service = new ProverbService({ now: () => now });
 
-    await ProverbService.detail("Ada_gula_ada_semut");
+    await service.detail("Ada_gula_ada_semut");
     now = 1000;
-    await ProverbService.detail("Ada_gula_ada_semut");
+    await service.detail("Ada_gula_ada_semut");
 
     expect(getScraperHtml).toHaveBeenCalledTimes(2);
     expect(getScraperHtml).toHaveBeenCalledWith("https://id.wikiquote.org/wiki/Peribahasa_Indonesia");
@@ -61,11 +61,11 @@ describe("ProverbService", () => {
       url.includes("Peribahasa_Indonesia") ? fixture("proverb-list.html") : fixture("proverb-detail.html"),
     );
     const { ProverbService } = await loadService(getScraperHtml);
-    ProverbService.configureCacheForTests({ now: () => now });
+    const service = new ProverbService({ now: () => now });
 
-    await ProverbService.detail("Ada_gula_ada_semut");
+    await service.detail("Ada_gula_ada_semut");
     now = 3600000;
-    await ProverbService.detail("Ada_gula_ada_semut");
+    await service.detail("Ada_gula_ada_semut");
 
     expect(getScraperHtml).toHaveBeenCalledTimes(4);
   });

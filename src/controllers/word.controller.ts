@@ -2,10 +2,14 @@ import { Request, Response } from "express";
 import { ApiResponse, TopVisitedWordsResult } from "../interfaces/kbbi.interface";
 import { normalizeTopWordsLimit, WordVisitService } from "../services/word-visit.service";
 
+export type TopVisitedWordsService = Pick<WordVisitService, "getTopVisitedWords">;
+
 export default class WordController {
-  static async topVisited(req: Request, res: Response<ApiResponse<TopVisitedWordsResult>>): Promise<void> {
+  constructor(private readonly wordVisitService: TopVisitedWordsService) {}
+
+  topVisited = async (req: Request, res: Response<ApiResponse<TopVisitedWordsResult>>): Promise<void> => {
     const limit = normalizeTopWordsLimit(Number.parseInt(String(req.query.limit || "10"), 10));
-    const items = await WordVisitService.getTopVisitedWords(limit);
+    const items = await this.wordVisitService.getTopVisitedWords(limit);
 
     res.status(200).json({
       success: true,
@@ -15,5 +19,5 @@ export default class WordController {
         items,
       },
     });
-  }
+  };
 }

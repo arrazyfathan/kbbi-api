@@ -9,38 +9,42 @@ import {
 import { notFoundError } from "../lib/api-error";
 import { IndonesianFigureService } from "../services/indonesian-figure.service";
 
+export type IndonesianFigureLookupService = Pick<IndonesianFigureService, "list" | "search" | "detail">;
+
 export default class IndonesianFigureController {
-  static async list(req: Request, res: Response<ApiResponse<PaginatedIndonesianFigureList>>): Promise<void> {
+  constructor(private readonly indonesianFigureService: IndonesianFigureLookupService) {}
+
+  list = async (req: Request, res: Response<ApiResponse<PaginatedIndonesianFigureList>>): Promise<void> => {
     const pagination = parsePaginationParams(req.query, { maxLimit: 50 });
     const includeDetails = parseBooleanQuery(req.query.includeDetails, "includeDetails");
     const { page, limit } = pagination;
-    const results = await IndonesianFigureService.list(page, limit, { includeDetails });
+    const results = await this.indonesianFigureService.list(page, limit, { includeDetails });
 
     res.status(200).json({
       success: true,
       message: "Indonesian figure list fetched successfully",
       data: results,
     });
-  }
+  };
 
-  static async search(req: Request, res: Response<ApiResponse<PaginatedIndonesianFigureList>>): Promise<void> {
+  search = async (req: Request, res: Response<ApiResponse<PaginatedIndonesianFigureList>>): Promise<void> => {
     const query = parseRequiredQuery(req.query.q, "q");
     const pagination = parsePaginationParams(req.query, { maxLimit: 50 });
     const includeDetails = parseBooleanQuery(req.query.includeDetails, "includeDetails");
 
     const { page, limit } = pagination;
-    const results = await IndonesianFigureService.search(query, page, limit, { includeDetails });
+    const results = await this.indonesianFigureService.search(query, page, limit, { includeDetails });
 
     res.status(200).json({
       success: true,
       message: "Indonesian figure search successful",
       data: results,
     });
-  }
+  };
 
-  static async detail(req: Request, res: Response<ApiResponse<IndonesianFigure>>): Promise<void> {
+  detail = async (req: Request, res: Response<ApiResponse<IndonesianFigure>>): Promise<void> => {
     const slug = parseSlugParam(req.params.slug);
-    const result = await IndonesianFigureService.detail(slug);
+    const result = await this.indonesianFigureService.detail(slug);
 
     if (!result) {
       throw notFoundError("Indonesian figure not found");
@@ -51,5 +55,5 @@ export default class IndonesianFigureController {
       message: "Indonesian figure detail fetched successfully",
       data: result,
     });
-  }
+  };
 }

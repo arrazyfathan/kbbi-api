@@ -1,6 +1,7 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 import cors from "cors";
-import apiRouter from "./routes/api.routes";
+import { AppDependencies, createAppDependencies } from "./app-dependencies";
+import createApiRouter from "./routes/api.routes";
 import docsRouter from "./routes/docs.routes";
 import config from "./config";
 import logger from "./lib/logger";
@@ -11,8 +12,10 @@ import { notFoundError } from "./lib/api-error";
 
 class App {
   public app: Application;
+  private readonly dependencies: AppDependencies;
 
-  constructor() {
+  constructor(dependencies: AppDependencies = createAppDependencies()) {
+    this.dependencies = dependencies;
     this.app = express();
     this.app.set("trust proxy", 1);
     this.initializeMiddlewares();
@@ -37,7 +40,7 @@ class App {
 
   private initializeRoutes() {
     this.app.use(docsRouter);
-    this.app.use(apiRouter);
+    this.app.use(createApiRouter(this.dependencies.controllers));
   }
 
   private initializeErrorHandling() {

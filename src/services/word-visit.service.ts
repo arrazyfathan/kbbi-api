@@ -44,25 +44,25 @@ type SupabaseLike = {
 };
 
 export class WordVisitService {
-  static async trackWordVisit(
-    word: string,
-    visitorId: string | undefined,
-    options: { client?: SupabaseLike; now?: Date; visitorHashSalt?: string } = {},
-  ): Promise<number | null> {
+  constructor(
+    private readonly options: { client?: SupabaseLike | null; now?: () => Date; visitorHashSalt?: string } = {},
+  ) {}
+
+  async trackWordVisit(word: string, visitorId: string | undefined): Promise<number | null> {
     const normalizedWord = normalizeWord(word);
-    const visitorHash = hashVisitorId(visitorId, options.visitorHashSalt ?? config.visitorHashSalt);
+    const visitorHash = hashVisitorId(visitorId, this.options.visitorHashSalt ?? config.visitorHashSalt);
 
     if (!normalizedWord || !visitorHash) {
       return null;
     }
 
-    const client = options.client || supabase;
+    const client = this.options.client ?? supabase;
 
     if (!client) {
       throw upstreamUnavailableError("Supabase service is unavailable");
     }
 
-    const visitedDate = toVisitedDate(options.now || new Date());
+    const visitedDate = toVisitedDate(this.options.now?.() || new Date());
 
     const insertResult = await client.from(WORD_VISITS_TABLE).upsert(
       {
@@ -92,11 +92,8 @@ export class WordVisitService {
     return countResult.count ?? 0;
   }
 
-  static async getTopVisitedWords(
-    limit = DEFAULT_TOP_WORDS_LIMIT,
-    options: { client?: SupabaseLike } = {},
-  ): Promise<TopVisitedWord[]> {
-    const client = options.client || supabase;
+  async getTopVisitedWords(limit = DEFAULT_TOP_WORDS_LIMIT): Promise<TopVisitedWord[]> {
+    const client = this.options.client ?? supabase;
 
     if (!client) {
       throw upstreamUnavailableError("Supabase service is unavailable");

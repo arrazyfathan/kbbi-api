@@ -5,49 +5,15 @@ import express from "express";
 import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/app";
+import { AppDependencies } from "../src/app-dependencies";
+import HealthController from "../src/controllers/health.controller";
+import IndonesianFigureController from "../src/controllers/indonesian-figure.controller";
+import KbbiController from "../src/controllers/kbbi.controller";
+import ProverbController from "../src/controllers/proverb.controller";
+import WordController from "../src/controllers/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
 import { createRateLimiter } from "../src/middlewares/rate-limit.middleware";
-import { IndonesianFigureService } from "../src/services/indonesian-figure.service";
-import { KbbiService } from "../src/services/kbbi.service";
-import { ProverbService } from "../src/services/proverb.service";
-import { WordVisitService } from "../src/services/word-visit.service";
-
-vi.mock("../src/services/kbbi.service", () => ({
-  KbbiService: {
-    search: vi.fn(),
-  },
-}));
-
-vi.mock("../src/services/proverb.service", () => ({
-  ProverbService: {
-    list: vi.fn(),
-    search: vi.fn(),
-    detail: vi.fn(),
-  },
-}));
-
-vi.mock("../src/services/indonesian-figure.service", () => ({
-  IndonesianFigureService: {
-    list: vi.fn(),
-    search: vi.fn(),
-    detail: vi.fn(),
-  },
-}));
-
-vi.mock("../src/services/word-visit.service", async () => {
-  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>(
-    "../src/services/word-visit.service",
-  );
-
-  return {
-    ...actual,
-    WordVisitService: {
-      getTopVisitedWords: vi.fn(),
-      trackWordVisit: vi.fn(),
-    },
-  };
-});
 
 type OpenApiResponse = {
   content?: {
@@ -72,6 +38,7 @@ type ContractTarget = {
 };
 
 let openApiSpec: OpenApiSpec;
+let testServices: ReturnType<typeof createTestServices>;
 
 describe("OpenAPI response contracts", () => {
   beforeAll(async () => {
@@ -80,19 +47,19 @@ describe("OpenAPI response contracts", () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    testServices = createTestServices();
   });
 
   it("validates representative success responses against documented schemas", async () => {
-    vi.mocked(KbbiService.search).mockResolvedValueOnce([
+    testServices.kbbiService.search.mockResolvedValueOnce([
       {
         headword: "demokrasi",
         definitions: [{ wordClass: "n[Nomina]", description: "pemerintahan rakyat" }],
       },
     ]);
-    vi.mocked(WordVisitService.trackWordVisit).mockResolvedValueOnce(12);
-    vi.mocked(WordVisitService.getTopVisitedWords).mockResolvedValueOnce([{ word: "demokrasi", visitorCount: 12 }]);
-    vi.mocked(ProverbService.search).mockResolvedValueOnce({
+    testServices.wordVisitService.trackWordVisit.mockResolvedValueOnce(12);
+    testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([{ word: "demokrasi", visitorCount: 12 }]);
+    testServices.proverbService.search.mockResolvedValueOnce({
       source: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
       pagination: {
         page: 1,
@@ -111,7 +78,7 @@ describe("OpenAPI response contracts", () => {
         },
       ],
     });
-    vi.mocked(IndonesianFigureService.search).mockResolvedValueOnce({
+    testServices.indonesianFigureService.search.mockResolvedValueOnce({
       source: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
       pagination: {
         page: 1,
@@ -160,7 +127,7 @@ describe("OpenAPI response contracts", () => {
   });
 
   it("validates documented validation and upstream error response contracts", async () => {
-    vi.mocked(KbbiService.search).mockRejectedValueOnce(
+    testServices.kbbiService.search.mockRejectedValueOnce(
       new UpstreamHttpError("Upstream service failed", {
         statusCode: 502,
         upstreamStatus: 503,
@@ -199,7 +166,41 @@ describe("OpenAPI response contracts", () => {
 });
 
 function createApp() {
-  return new App().app;
+  return new App(createTestDependencies(testServices)).app;
+}
+
+function createTestServices() {
+  return {
+    indonesianFigureService: {
+      list: vi.fn(),
+      search: vi.fn(),
+      detail: vi.fn(),
+    },
+    kbbiService: {
+      search: vi.fn(),
+    },
+    proverbService: {
+      list: vi.fn(),
+      search: vi.fn(),
+      detail: vi.fn(),
+    },
+    wordVisitService: {
+      getTopVisitedWords: vi.fn(),
+      trackWordVisit: vi.fn(),
+    },
+  };
+}
+
+function createTestDependencies(services: ReturnType<typeof createTestServices>): AppDependencies {
+  return {
+    controllers: {
+      healthController: HealthController,
+      indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
+      kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
+      proverbController: new ProverbController(services.proverbService),
+      wordController: new WordController(services.wordVisitService),
+    },
+  };
 }
 
 function createRateLimitedApp() {

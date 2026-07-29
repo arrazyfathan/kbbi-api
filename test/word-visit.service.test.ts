@@ -28,22 +28,22 @@ describe("WordVisitService", () => {
 
   it("returns null without a visitor id", async () => {
     const client = createSupabaseMock({ count: 10 });
+    const service = new WordVisitService({ client });
 
-    await expect(WordVisitService.trackWordVisit("demokrasi", undefined, { client })).resolves.toBeNull();
+    await expect(service.trackWordVisit("demokrasi", undefined)).resolves.toBeNull();
     expect(client.calls.upserts).toEqual([]);
     expect(client.calls.countWords).toEqual([]);
   });
 
   it("upserts one daily visit and returns the total count", async () => {
     const client = createSupabaseMock({ count: 3 });
+    const service = new WordVisitService({
+      client,
+      now: () => new Date("2026-07-17T12:00:00.000Z"),
+      visitorHashSalt: "visit-salt",
+    });
 
-    await expect(
-      WordVisitService.trackWordVisit(" Demokrasi ", "visitor-1", {
-        client,
-        now: new Date("2026-07-17T12:00:00.000Z"),
-        visitorHashSalt: "visit-salt",
-      }),
-    ).resolves.toBe(3);
+    await expect(service.trackWordVisit(" Demokrasi ", "visitor-1")).resolves.toBe(3);
 
     expect(client.calls.upserts).toEqual([
       {
@@ -63,8 +63,9 @@ describe("WordVisitService", () => {
 
   it("throws when Supabase cannot record the visit", async () => {
     const client = createSupabaseMock({ upsertError: "insert failed" });
+    const service = new WordVisitService({ client });
 
-    await expect(WordVisitService.trackWordVisit("demokrasi", "visitor-1", { client })).rejects.toMatchObject({
+    await expect(service.trackWordVisit("demokrasi", "visitor-1")).rejects.toMatchObject({
       statusCode: 502,
       code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
       message: "Supabase service is unavailable",
@@ -78,8 +79,9 @@ describe("WordVisitService", () => {
         { word: "ajar", visitor_count: 8 },
       ],
     });
+    const service = new WordVisitService({ client });
 
-    await expect(WordVisitService.getTopVisitedWords(5, { client })).resolves.toEqual([
+    await expect(service.getTopVisitedWords(5)).resolves.toEqual([
       { word: "demokrasi", visitorCount: 12 },
       { word: "ajar", visitorCount: 8 },
     ]);
@@ -104,8 +106,9 @@ describe("WordVisitService", () => {
 
   it("throws when Supabase cannot fetch top visited words", async () => {
     const client = createTopWordsSupabaseMock({ error: "view unavailable" });
+    const service = new WordVisitService({ client });
 
-    await expect(WordVisitService.getTopVisitedWords(10, { client })).rejects.toMatchObject({
+    await expect(service.getTopVisitedWords(10)).rejects.toMatchObject({
       statusCode: 502,
       code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
       message: "Supabase service is unavailable",

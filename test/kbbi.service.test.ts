@@ -31,8 +31,9 @@ describe("KbbiService", () => {
     }));
 
     const { KbbiService } = await import("../src/services/kbbi.service");
+    const service = new KbbiService();
 
-    await KbbiService.search("ajar");
+    await service.search("ajar");
 
     expect(getScraperHtml).toHaveBeenCalledWith("https://kbbi.example.test/entri/ajar", {
       timeoutMs: 45000,

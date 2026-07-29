@@ -9,29 +9,29 @@ type Clock = () => number;
 const proverbListCacheKey = "all";
 
 export class ProverbService {
-  private static now: Clock = Date.now;
-  private static cache = new TtlCache<typeof proverbListCacheKey, ProverbList>({
-    ttlMs: config.cache.wikiquoteTtlMs,
-    now: () => ProverbService.now(),
-  });
-  private static detailCache = new TtlCache<string, ProverbDetail>({
-    ttlMs: config.cache.wikiquoteTtlMs,
-    now: () => ProverbService.now(),
-  });
-  private static readonly sourceUrl = config.wikiquoteProverbUrl;
+  private readonly now: Clock;
+  private readonly cache: TtlCache<typeof proverbListCacheKey, ProverbList>;
+  private readonly detailCache: TtlCache<string, ProverbDetail>;
+  private readonly sourceUrl = config.wikiquoteProverbUrl;
 
-  static configureCacheForTests(options: { now?: Clock } = {}): void {
+  constructor(options: { now?: Clock } = {}) {
     this.now = options.now || Date.now;
-    this.cache.clear();
-    this.detailCache.clear();
+    this.cache = new TtlCache<typeof proverbListCacheKey, ProverbList>({
+      ttlMs: config.cache.wikiquoteTtlMs,
+      now: () => this.now(),
+    });
+    this.detailCache = new TtlCache<string, ProverbDetail>({
+      ttlMs: config.cache.wikiquoteTtlMs,
+      now: () => this.now(),
+    });
   }
 
-  static async list(page = 1, limit = 20): Promise<PaginatedProverbList> {
+  async list(page = 1, limit = 20): Promise<PaginatedProverbList> {
     const data = await this.getAll();
     return this.paginate(data.items, page, limit);
   }
 
-  static async search(query: string, page = 1, limit = 20): Promise<PaginatedProverbList> {
+  async search(query: string, page = 1, limit = 20): Promise<PaginatedProverbList> {
     const data = await this.getAll();
     const normalizedQuery = this.normalizeSearchText(query);
     const items = data.items.filter((item) => this.normalizeSearchText(item.text).includes(normalizedQuery));
@@ -39,7 +39,7 @@ export class ProverbService {
     return this.paginate(items, page, limit);
   }
 
-  static async detail(slug: string): Promise<ProverbDetail | null> {
+  async detail(slug: string): Promise<ProverbDetail | null> {
     const normalizedSlug = this.normalizeSlug(slug);
 
     if (!normalizedSlug) {
@@ -73,7 +73,7 @@ export class ProverbService {
     return parsed;
   }
 
-  private static async getAll(): Promise<ProverbList> {
+  private async getAll(): Promise<ProverbList> {
     const cached = this.cache.get(proverbListCacheKey);
 
     if (cached) {
@@ -94,146 +94,19 @@ export class ProverbService {
     return data;
   }
 
-  private static async fetchHtml(url: string): Promise<string> {
+  private async fetchHtml(url: string): Promise<string> {
     return getScraperHtml(url);
   }
 
-  private static parseHtml(html: string): Proverb[] {
+  private parseHtml(html: string): Proverb[] {
     return parseProverbListHtml(html, this.sourceUrl);
   }
 
-  private static parseDetailHtml(html: string, fallback?: Proverb): ProverbDetail {
+  private parseDetailHtml(html: string, fallback?: Proverb): ProverbDetail {
     return parseProverbDetailHtml(html, { fallback, sourceUrl: this.sourceUrl });
   }
 
-  private static extractMeaning($: cheerio.CheerioAPI, proverbText?: string): string | null {
-    const content = $("#mw-content-text .mw-parser-output").first();
-    let meaning: string | null = null;
-    const label = this.normalizeLabel(proverbText || "");
-
-    content.children().each((_, element) => {
-      if (meaning !== null) {
-        return false;
-      }
-
-      const current = $(element);
-      const currentText = this.normalizeText(current.text());
-      const currentHeadingText = this.normalizeText(current.find(".mw-headline, h2, h3, h4").first().text());
-      const inlineMeaning = currentText.match(/(?:^|[\s;,.])artinya(?:\s+adalah)?\s*[:;,]?\s*(.+)$/i);
-
-      if (inlineMeaning?.[1]) {
-        const meaningParts = [this.normalizeMeaningText(inlineMeaning[1])];
-        const nextMeaningItems = this.getNextMeaningItems($, current);
-
-        meaning = [...meaningParts, ...nextMeaningItems].filter(Boolean).join("; ");
-        return false;
-      }
-
-      const currentLabel = this.normalizeLabel(current.find("b").first().text() || label);
-      const labeledMeaning = this.extractLabeledMeaning(currentText, currentLabel);
-
-      if (labeledMeaning) {
-        meaning = labeledMeaning;
-        return false;
-      }
-
-      const nextMeaningItems = this.getNextMeaningItems($, current);
-
-      if (nextMeaningItems.length > 0 && this.looksLikeProverbIntro(currentText, currentLabel)) {
-        meaning = nextMeaningItems.join("; ");
-        return false;
-      }
-
-      if (current.is("p, pre") && this.looksLikeStandaloneMeaning(currentText, label)) {
-        meaning = currentText;
-        return false;
-      }
-
-      const hasMeaningList =
-        /^(arti|artinya)\s*:?\s*$/i.test(currentHeadingText || currentText) || /:\s*$/.test(currentText);
-
-      if (!hasMeaningList) {
-        return;
-      }
-
-      if (nextMeaningItems.length > 0) {
-        meaning = nextMeaningItems.join("; ");
-      }
-    });
-
-    return meaning || null;
-  }
-
-  private static getNextMeaningItems($: cheerio.CheerioAPI, current: cheerio.Cheerio<any>): string[] {
-    return current
-      .nextUntil("h2, h3, h4, .mw-heading")
-      .filter("ol, ul")
-      .first()
-      .find("li")
-      .map((_, item) => this.normalizeText($(item).text()))
-      .get()
-      .filter(Boolean);
-  }
-
-  private static extractLabeledMeaning(text: string, label: string): string | null {
-    if (!text || !label) {
-      return null;
-    }
-
-    const match = text.match(new RegExp(`^${this.escapeRegExp(label)}\\s*['"“”]?\\s*(?:[-.:;,]\\s*|\\s+)(.+)$`, "i"));
-    const value = this.normalizeMeaningText(match?.[1] || "");
-
-    if (value) {
-      const explicitMeaning = value.match(
-        /^(?:adalah\s+)?(?:peribahasa\s+yang\s+)?(?:memiliki\s+arti|berarti|bermakna|maksudnya|artinya(?:\s+adalah)?)\s*[:;,]?\s*(.+)$/i,
-      );
-
-      return this.normalizeMeaningText(explicitMeaning?.[1] || value) || null;
-    }
-
-    const separatedMeaning = text.match(/^(.+?)\s*[:]\s*(.+)$/);
-
-    if (!separatedMeaning?.[1] || !separatedMeaning?.[2]) {
-      return null;
-    }
-
-    const heading = this.compactForMatch(separatedMeaning[1]);
-    const compactLabel = this.compactForMatch(label);
-
-    if (!heading.includes(compactLabel) && !compactLabel.includes(heading)) {
-      return null;
-    }
-
-    return this.normalizeMeaningText(separatedMeaning[2]) || null;
-  }
-
-  private static looksLikeProverbIntro(text: string, label: string): boolean {
-    if (!text || !label) {
-      return false;
-    }
-
-    const normalizedText = this.normalizeSearchText(text);
-    const normalizedLabel = this.normalizeSearchText(label);
-
-    return normalizedText === normalizedLabel || normalizedText.startsWith(`${normalizedLabel} `);
-  }
-
-  private static looksLikeStandaloneMeaning(text: string, label: string): boolean {
-    if (!text || text.length < 3) {
-      return false;
-    }
-
-    if (!label) {
-      return true;
-    }
-
-    const normalizedText = this.normalizeSearchText(text);
-    const normalizedLabel = this.normalizeSearchText(label);
-
-    return normalizedText !== normalizedLabel && !normalizedText.startsWith(normalizedLabel);
-  }
-
-  private static paginate(items: Proverb[], page: number, limit: number): PaginatedProverbList {
+  private paginate(items: Proverb[], page: number, limit: number): PaginatedProverbList {
     const normalizedPage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
     const normalizedLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 20;
     const total = items.length;
@@ -254,58 +127,16 @@ export class ProverbService {
     };
   }
 
-  private static normalizeText(value: string): string {
-    return value
-      .replace(/\s+/g, " ")
-      .replace(/^["'“”]+/, "")
-      .replace(/["'“”\s.]+$/, "")
-      .trim();
+  private normalizeSearchText(value: string): string {
+    return normalizeProverbSearchText(value);
   }
 
-  private static normalizeSearchText(value: string): string {
-    return this.normalizeText(value).toLocaleLowerCase("id-ID");
+  private normalizeSlug(value: string): string {
+    return normalizeProverbSlug(value);
   }
 
-  private static normalizeMeaningText(value: string): string {
-    return this.normalizeText(value)
-      .replace(/^[-:;,\s]+/, "")
-      .trim();
-  }
-
-  private static normalizeLabel(value: string): string {
-    return this.normalizeText(value).replace(/\s*[:;,]+$/, "");
-  }
-
-  private static compactForMatch(value: string): string {
-    return this.normalizeSearchText(value).replace(/[^\p{L}\p{N}]+/gu, "");
-  }
-
-  private static escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
-  private static normalizeSlug(value: string): string {
-    return decodeURIComponent(value).trim().replace(/\s+/g, "_");
-  }
-
-  private static slugFromText(value: string): string {
-    return this.normalizeText(value).replace(/\s+/g, "_");
-  }
-
-  private static slugFromUrl(value?: string): string | null {
-    if (!value) {
-      return null;
-    }
-
-    const url = new URL(value);
-    const title = url.searchParams.get("title");
-    const slug = title || url.pathname.split("/").pop();
-
-    return slug ? this.normalizeSlug(slug) : null;
-  }
-
-  private static getProverbUrl(slug: string): string {
-    return new URL(`/wiki/${encodeURIComponent(slug)}`, this.sourceUrl).toString();
+  private getProverbUrl(slug: string): string {
+    return getProverbUrl(slug, this.sourceUrl);
   }
 }
 

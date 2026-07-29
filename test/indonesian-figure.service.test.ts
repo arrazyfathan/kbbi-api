@@ -21,8 +21,9 @@ describe("IndonesianFigureService", () => {
       return fixture("figure-category.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
+    const service = new IndonesianFigureService();
 
-    const result = await IndonesianFigureService.list(1, 2);
+    const result = await service.list(1, 2);
 
     expect(result.items).toEqual([
       {
@@ -55,8 +56,9 @@ describe("IndonesianFigureService", () => {
       return fixture("figure-category.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
+    const service = new IndonesianFigureService();
 
-    const result = await IndonesianFigureService.search("soekarno", 1, 20);
+    const result = await service.search("soekarno", 1, 20);
 
     expect(result.items).toEqual([
       {
@@ -87,8 +89,9 @@ describe("IndonesianFigureService", () => {
       return fixture("figure-detail.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
+    const service = new IndonesianFigureService();
 
-    const result = await IndonesianFigureService.list(1, 7, { includeDetails: true });
+    const result = await service.list(1, 7, { includeDetails: true });
 
     expect(result.items).toHaveLength(7);
     expect(result.items[0]).toMatchObject({
@@ -111,11 +114,11 @@ describe("IndonesianFigureService", () => {
       return fixture("figure-category.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
-    IndonesianFigureService.configureCacheForTests({ now: () => now });
+    const service = new IndonesianFigureService({ now: () => now });
 
-    await IndonesianFigureService.list(1, 20);
+    await service.list(1, 20);
     now = 1000;
-    await IndonesianFigureService.search("soekarno", 1, 20);
+    await service.search("soekarno", 1, 20);
 
     expect(getScraperHtml).toHaveBeenCalledTimes(2);
   });
@@ -130,11 +133,11 @@ describe("IndonesianFigureService", () => {
       return fixture("figure-category.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
-    IndonesianFigureService.configureCacheForTests({ now: () => now });
+    const service = new IndonesianFigureService({ now: () => now });
 
-    await IndonesianFigureService.list(1, 20);
+    await service.list(1, 20);
     now = 3600000;
-    await IndonesianFigureService.list(1, 20);
+    await service.list(1, 20);
 
     expect(getScraperHtml).toHaveBeenCalledTimes(4);
   });
@@ -143,15 +146,15 @@ describe("IndonesianFigureService", () => {
     let now = 0;
     const getScraperHtml = vi.fn(async () => fixture("figure-detail.html"));
     const { IndonesianFigureService } = await loadService(getScraperHtml);
-    IndonesianFigureService.configureCacheForTests({ now: () => now });
+    const service = new IndonesianFigureService({ now: () => now });
 
-    await IndonesianFigureService.detail("Soekarno", {
+    await service.detail("Soekarno", {
       name: "Soekarno",
       slug: "Soekarno",
       sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
     });
     now = 1000;
-    await IndonesianFigureService.detail("Soekarno", {
+    await service.detail("Soekarno", {
       name: "Soekarno",
       slug: "Soekarno",
       sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
@@ -164,15 +167,15 @@ describe("IndonesianFigureService", () => {
     let now = 0;
     const getScraperHtml = vi.fn(async () => fixture("figure-detail.html"));
     const { IndonesianFigureService } = await loadService(getScraperHtml);
-    IndonesianFigureService.configureCacheForTests({ now: () => now });
+    const service = new IndonesianFigureService({ now: () => now });
 
-    await IndonesianFigureService.detail("Soekarno", {
+    await service.detail("Soekarno", {
       name: "Soekarno",
       slug: "Soekarno",
       sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
     });
     now = 3600000;
-    await IndonesianFigureService.detail("Soekarno", {
+    await service.detail("Soekarno", {
       name: "Soekarno",
       slug: "Soekarno",
       sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",

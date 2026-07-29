@@ -9,7 +9,7 @@ export class KbbiService {
    * @param word The word to search for
    * @returns Array of entries or null if not found
    */
-  static async search(word: string): Promise<Entry[] | null> {
+  async search(word: string): Promise<Entry[] | null> {
     try {
       const html = await this.fetchHtml(word);
       return this.parseHtml(html);
@@ -21,13 +21,13 @@ export class KbbiService {
     }
   }
 
-  private static async fetchHtml(word: string): Promise<string> {
+  private async fetchHtml(word: string): Promise<string> {
     return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`, {
       timeoutMs: config.upstream.kbbiFetchTimeoutMs,
     });
   }
 
-  private static parseHtml(html: string): Entry[] | null {
+  private parseHtml(html: string): Entry[] | null {
     return parseKbbiHtml(html);
   }
 }

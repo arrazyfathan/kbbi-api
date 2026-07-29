@@ -18,32 +18,32 @@ type Clock = () => number;
 const figureListCacheKey = "all";
 
 export class IndonesianFigureService {
-  private static now: Clock = Date.now;
-  private static cache = new TtlCache<typeof figureListCacheKey, IndonesianFigureList>({
-    ttlMs: config.cache.wikiquoteTtlMs,
-    now: () => IndonesianFigureService.now(),
-  });
-  private static detailCache = new TtlCache<string, IndonesianFigure>({
-    ttlMs: config.cache.wikiquoteTtlMs,
-    now: () => IndonesianFigureService.now(),
-  });
-  private static readonly sourceUrl = config.wikiquoteIndonesianFigureUrl;
-  private static readonly detailConcurrencyLimit = 5;
+  private readonly now: Clock;
+  private readonly cache: TtlCache<typeof figureListCacheKey, IndonesianFigureList>;
+  private readonly detailCache: TtlCache<string, IndonesianFigure>;
+  private readonly sourceUrl = config.wikiquoteIndonesianFigureUrl;
+  private readonly detailConcurrencyLimit = 5;
 
-  static configureCacheForTests(options: { now?: Clock } = {}): void {
+  constructor(options: { now?: Clock } = {}) {
     this.now = options.now || Date.now;
-    this.cache.clear();
-    this.detailCache.clear();
+    this.cache = new TtlCache<typeof figureListCacheKey, IndonesianFigureList>({
+      ttlMs: config.cache.wikiquoteTtlMs,
+      now: () => this.now(),
+    });
+    this.detailCache = new TtlCache<string, IndonesianFigure>({
+      ttlMs: config.cache.wikiquoteTtlMs,
+      now: () => this.now(),
+    });
   }
 
-  static async list(page = 1, limit = 20, options: FigureListOptions = {}): Promise<PaginatedIndonesianFigureList> {
+  async list(page = 1, limit = 20, options: FigureListOptions = {}): Promise<PaginatedIndonesianFigureList> {
     const data = await this.getAll();
     const paginated = this.paginate(data.items, page, limit);
 
     return this.withOptionalDetails(paginated, options.includeDetails === true);
   }
 
-  static async search(
+  async search(
     query: string,
     page = 1,
     limit = 20,
@@ -57,7 +57,7 @@ export class IndonesianFigureService {
     return this.withOptionalDetails(paginated, options.includeDetails === true);
   }
 
-  static async detail(slug: string, fallback?: IndonesianFigureSummary): Promise<IndonesianFigure | null> {
+  async detail(slug: string, fallback?: IndonesianFigureSummary): Promise<IndonesianFigure | null> {
     const normalizedSlug = this.normalizeSlug(slug);
 
     if (!normalizedSlug) {
@@ -95,7 +95,7 @@ export class IndonesianFigureService {
     return parsed;
   }
 
-  private static async getAll(): Promise<IndonesianFigureList> {
+  private async getAll(): Promise<IndonesianFigureList> {
     const cached = this.cache.get(figureListCacheKey);
 
     if (cached) {
@@ -133,22 +133,22 @@ export class IndonesianFigureService {
     return data;
   }
 
-  private static async fetchHtml(url: string): Promise<string> {
+  private async fetchHtml(url: string): Promise<string> {
     return getScraperHtml(url);
   }
 
-  private static parseCategoryHtml(
+  private parseCategoryHtml(
     html: string,
     currentUrl: string,
   ): { items: IndonesianFigureSummary[]; nextUrl: string | null } {
     return parseIndonesianFigureCategoryHtml(html, currentUrl);
   }
 
-  private static parseDetailHtml(html: string, fallback?: IndonesianFigureSummary): IndonesianFigure {
+  private parseDetailHtml(html: string, fallback?: IndonesianFigureSummary): IndonesianFigure {
     return parseIndonesianFigureDetailHtml(html, { fallback, sourceUrl: this.sourceUrl });
   }
 
-  private static async withOptionalDetails(
+  private async withOptionalDetails(
     paginated: Omit<PaginatedIndonesianFigureList, "items"> & { items: IndonesianFigureSummary[] },
     includeDetails: boolean,
   ): Promise<PaginatedIndonesianFigureList> {
@@ -168,11 +168,7 @@ export class IndonesianFigureService {
     };
   }
 
-  private static async mapWithConcurrency<T, R>(
-    items: T[],
-    limit: number,
-    mapper: (item: T) => Promise<R>,
-  ): Promise<R[]> {
+  private async mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
     const results = new Array<R>(items.length);
     let nextIndex = 0;
 
@@ -190,100 +186,7 @@ export class IndonesianFigureService {
     return results;
   }
 
-  private static extractDescription($: cheerio.CheerioAPI): string | null {
-    const paragraphs = $("#mw-content-text .mw-parser-output > p")
-      .map((_, paragraph) => this.normalizeText($(paragraph).text()))
-      .get()
-      .filter(Boolean);
-
-    return paragraphs[0] || null;
-  }
-
-  private static extractPhoto($: cheerio.CheerioAPI, sourceUrl: string): string | null {
-    const ignoredImagePattern = /(Commons-logo|Wikipedia-logo|Wikisource-logo|Wikiquote-logo|OOjs_UI_icon)/i;
-    let photo: string | null = null;
-
-    $("#mw-content-text .mw-parser-output figure img, #mw-content-text .mw-parser-output .infobox img").each(
-      (_, image) => {
-        if (photo) {
-          return false;
-        }
-
-        const src = $(image).attr("src");
-
-        if (!src || ignoredImagePattern.test(src)) {
-          return;
-        }
-
-        photo = new URL(src, sourceUrl).toString();
-      },
-    );
-
-    return photo;
-  }
-
-  private static extractQuotes($: cheerio.CheerioAPI): string[] {
-    const content = $("#mw-content-text .mw-parser-output").first();
-    const quotes: string[] = [];
-    const seen = new Set<string>();
-    let inQuoteSection = false;
-
-    content.children().each((_, element) => {
-      const current = $(element);
-      const heading = this.normalizeSearchText(current.find("h2, h3, .mw-headline").first().text() || current.text());
-
-      if (current.is("h2, h3, .mw-heading")) {
-        inQuoteSection = /^(kutipan|ucapan|perkataan|quotes?)/i.test(heading);
-        return;
-      }
-
-      if (!inQuoteSection || !current.is("ul, ol")) {
-        return;
-      }
-
-      current.children("li").each((_, item) => {
-        const quote = this.normalizeQuoteText(this.textWithoutNestedLists($, $(item)));
-        const key = this.normalizeSearchText(quote);
-
-        if (!quote || seen.has(key)) {
-          return;
-        }
-
-        seen.add(key);
-        quotes.push(quote);
-      });
-    });
-
-    if (quotes.length > 0) {
-      return quotes;
-    }
-
-    content
-      .children("ul, ol")
-      .children("li")
-      .each((_, item) => {
-        const quote = this.normalizeQuoteText(this.textWithoutNestedLists($, $(item)));
-        const key = this.normalizeSearchText(quote);
-
-        if (!quote || seen.has(key)) {
-          return;
-        }
-
-        seen.add(key);
-        quotes.push(quote);
-      });
-
-    return quotes;
-  }
-
-  private static textWithoutNestedLists($: cheerio.CheerioAPI, item: cheerio.Cheerio<any>): string {
-    const clone = item.clone();
-    clone.find("ul, ol, table, style, script").remove();
-
-    return this.normalizeText(clone.text());
-  }
-
-  private static paginate(
+  private paginate(
     items: IndonesianFigureSummary[],
     page: number,
     limit: number,
@@ -308,47 +211,16 @@ export class IndonesianFigureService {
     };
   }
 
-  private static normalizeText(value: string): string {
-    return value
-      .replace(/\[\s*sunting(?: sumber)?\s*\]/gi, "")
-      .replace(/\s+/g, " ")
-      .replace(/^["'“”]+/, "")
-      .replace(/["'“”\s]+$/, "")
-      .trim();
+  private normalizeSearchText(value: string): string {
+    return normalizeFigureSearchText(value);
   }
 
-  private static normalizeQuoteText(value: string): string {
-    return this.normalizeText(value)
-      .replace(/[.。]\s*$/, "")
-      .trim();
+  private normalizeSlug(value: string): string {
+    return normalizeFigureSlug(value);
   }
 
-  private static normalizeSearchText(value: string): string {
-    return this.normalizeText(value).toLocaleLowerCase("id-ID");
-  }
-
-  private static normalizeSlug(value: string): string {
-    return decodeURIComponent(value).trim().replace(/\s+/g, "_");
-  }
-
-  private static slugFromText(value: string): string {
-    return this.normalizeText(value).replace(/\s+/g, "_");
-  }
-
-  private static slugFromUrl(value?: string): string | null {
-    if (!value) {
-      return null;
-    }
-
-    const url = new URL(value);
-    const title = url.searchParams.get("title");
-    const slug = title || url.pathname.split("/").pop();
-
-    return slug ? this.normalizeSlug(slug) : null;
-  }
-
-  private static getFigureUrl(slug: string): string {
-    return new URL(`/wiki/${encodeURIComponent(slug)}`, this.sourceUrl).toString();
+  private getFigureUrl(slug: string): string {
+    return getFigureUrl(slug, this.sourceUrl);
   }
 }
 

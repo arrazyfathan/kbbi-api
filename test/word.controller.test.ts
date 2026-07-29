@@ -1,36 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import WordController from "../src/controllers/word.controller";
-import { WordVisitService } from "../src/services/word-visit.service";
-
-vi.mock("../src/services/word-visit.service", async () => {
-  const actual = await vi.importActual<typeof import("../src/services/word-visit.service")>(
-    "../src/services/word-visit.service",
-  );
-
-  return {
-    ...actual,
-    WordVisitService: {
-      getTopVisitedWords: vi.fn(),
-    },
-  };
-});
 
 describe("WordController.topVisited", () => {
+  let wordVisitService: { getTopVisitedWords: ReturnType<typeof vi.fn> };
+  let controller: WordController;
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    wordVisitService = { getTopVisitedWords: vi.fn() };
+    controller = new WordController(wordVisitService);
   });
 
   it("returns top visited words with the requested limit", async () => {
-    vi.mocked(WordVisitService.getTopVisitedWords).mockResolvedValueOnce([
+    wordVisitService.getTopVisitedWords.mockResolvedValueOnce([
       { word: "demokrasi", visitorCount: 12 },
       { word: "ajar", visitorCount: 8 },
     ]);
 
     const { req, res, body } = createRequestResponse({ query: { limit: "5" } });
 
-    await WordController.topVisited(req, res);
+    await controller.topVisited(req, res);
 
-    expect(WordVisitService.getTopVisitedWords).toHaveBeenCalledWith(5);
+    expect(wordVisitService.getTopVisitedWords).toHaveBeenCalledWith(5);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(body.value).toEqual({
       success: true,
@@ -46,13 +36,13 @@ describe("WordController.topVisited", () => {
   });
 
   it("passes the default limit when limit is invalid", async () => {
-    vi.mocked(WordVisitService.getTopVisitedWords).mockResolvedValueOnce([]);
+    wordVisitService.getTopVisitedWords.mockResolvedValueOnce([]);
 
     const { req, res } = createRequestResponse({ query: { limit: "invalid" } });
 
-    await WordController.topVisited(req, res);
+    await controller.topVisited(req, res);
 
-    expect(WordVisitService.getTopVisitedWords).toHaveBeenCalledWith(10);
+    expect(wordVisitService.getTopVisitedWords).toHaveBeenCalledWith(10);
   });
 });
 
