@@ -14,6 +14,7 @@ import WordController from "../src/controllers/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
 import { createRateLimiter } from "../src/middlewares/rate-limit.middleware";
+import { HealthService } from "../src/services/health.service";
 
 type OpenApiResponse = {
   content?: {
@@ -104,6 +105,16 @@ describe("OpenAPI response contracts", () => {
       path: "/",
       status: 200,
     });
+    expectResponseToMatchContract(await request(app).get("/health/live"), {
+      method: "get",
+      path: "/health/live",
+      status: 200,
+    });
+    expectResponseToMatchContract(await request(app).get("/health/ready"), {
+      method: "get",
+      path: "/health/ready",
+      status: 200,
+    });
     expectResponseToMatchContract(await request(app).get("/search/Demokrasi").set("X-Visitor-Id", "client-1"), {
       method: "get",
       path: "/search/{word}",
@@ -188,13 +199,34 @@ function createTestServices() {
       getTopVisitedWords: vi.fn(),
       trackWordVisit: vi.fn(),
     },
+    healthService: {
+      live: vi.fn(() => ({ alive: true })),
+      ready: vi.fn(async () => ({
+        ready: true,
+        dependencies: [
+          {
+            name: "supabase" as const,
+            status: "skipped" as const,
+            required: false,
+            host: null,
+          },
+        ],
+      })),
+      supabaseDependency: vi.fn(async () => ({
+        name: "supabase" as const,
+        status: "failed" as const,
+        required: false,
+        host: null,
+        error: "Missing SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
+      })),
+    },
   };
 }
 
 function createTestDependencies(services: ReturnType<typeof createTestServices>): AppDependencies {
   return {
     controllers: {
-      healthController: HealthController,
+      healthController: new HealthController(services.healthService as unknown as HealthService),
       indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
       kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
       proverbController: new ProverbController(services.proverbService),

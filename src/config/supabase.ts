@@ -42,19 +42,27 @@ export async function checkSupabaseConnection() {
     };
   }
 
-  const response = await fetch(`${supabaseConfig.url}/rest/v1/`, {
-    method: "GET",
-    headers: {
-      apikey: supabaseConfig.key,
-      Authorization: `Bearer ${supabaseConfig.key}`,
-    },
-  });
+  try {
+    const response = await fetch(`${supabaseConfig.url}/rest/v1/`, {
+      method: "GET",
+      headers: {
+        apikey: supabaseConfig.key,
+        Authorization: `Bearer ${supabaseConfig.key}`,
+      },
+    });
 
-  return {
-    connected: response.ok,
-    host: getSupabaseHost(),
-    status: response.status,
-    statusText: response.statusText,
-    error: response.ok ? undefined : await response.text(),
-  };
+    return {
+      connected: response.ok,
+      host: getSupabaseHost(),
+      status: response.status,
+      statusText: response.statusText,
+      error: response.ok ? undefined : await response.text(),
+    };
+  } catch (error) {
+    return {
+      connected: false,
+      host: getSupabaseHost(),
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }

@@ -11,6 +11,8 @@ export function createApiRouter(controllers: AppControllers): Router {
     res.status(200).json({
       message: "Welcome to New KBBI API",
       endpoints: [
+        "/health/live",
+        "/health/ready",
         "/health/supabase",
         "/search/[word]",
         "/words/top",
@@ -22,6 +24,8 @@ export function createApiRouter(controllers: AppControllers): Router {
         "/figure/[slug]",
       ],
       examples: [
+        `${config.baseUrl}/health/live`,
+        `${config.baseUrl}/health/ready`,
         `${config.baseUrl}/health/supabase`,
         `${config.baseUrl}/search/demokrasi`,
         `${config.baseUrl}/words/top?limit=10`,
@@ -35,6 +39,8 @@ export function createApiRouter(controllers: AppControllers): Router {
     });
   });
 
+  router.get("/health/live", asyncHandler(controllers.healthController.live));
+  router.get("/health/ready", asyncHandler(controllers.healthController.ready));
   router.get("/health/supabase", asyncHandler(controllers.healthController.supabase));
   router.get("/search/:word", scraperRateLimiter, asyncHandler(controllers.kbbiController.search));
   router.get("/words/top", asyncHandler(controllers.wordController.topVisited));

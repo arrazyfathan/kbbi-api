@@ -7,6 +7,7 @@ import {
   PaginatedIndonesianFigureList,
 } from "../interfaces/kbbi.interface";
 import { getScraperHtml, isHttpNotFound } from "../lib/http-client";
+import logger from "../lib/logger";
 import { TtlCache } from "../lib/ttl-cache";
 
 type FigureListOptions = {
@@ -23,6 +24,7 @@ export class IndonesianFigureService {
   private readonly detailCache: TtlCache<string, IndonesianFigure>;
   private readonly sourceUrl = config.wikiquoteIndonesianFigureUrl;
   private readonly detailConcurrencyLimit = 5;
+  private readonly cacheTtlMs = config.cache.wikiquoteTtlMs;
 
   constructor(options: { now?: Clock } = {}) {
     this.now = options.now || Date.now;
@@ -65,6 +67,7 @@ export class IndonesianFigureService {
     }
 
     const cached = this.detailCache.get(normalizedSlug);
+    this.logCache("wikiquote_figure_detail", normalizedSlug, Boolean(cached));
 
     if (cached) {
       return cached;
@@ -97,6 +100,7 @@ export class IndonesianFigureService {
 
   private async getAll(): Promise<IndonesianFigureList> {
     const cached = this.cache.get(figureListCacheKey);
+    this.logCache("wikiquote_figure_list", figureListCacheKey, Boolean(cached));
 
     if (cached) {
       return cached;
@@ -134,7 +138,7 @@ export class IndonesianFigureService {
   }
 
   private async fetchHtml(url: string): Promise<string> {
-    return getScraperHtml(url);
+    return getScraperHtml(url, { upstream: "wikiquote" });
   }
 
   private parseCategoryHtml(
@@ -184,6 +188,19 @@ export class IndonesianFigureService {
     await Promise.all(Array.from({ length: workerCount }, worker));
 
     return results;
+  }
+
+  private logCache(cacheName: string, cacheKey: string, cacheHit: boolean): void {
+    logger.info(
+      {
+        event: "cache_lookup",
+        cacheName,
+        cacheKey,
+        cacheHit,
+        ttlMs: this.cacheTtlMs,
+      },
+      cacheHit ? "Scraper cache hit" : "Scraper cache miss",
+    );
   }
 
   private paginate(

@@ -9,7 +9,7 @@ import { ProverbService } from "./services/proverb.service";
 import { WordVisitService } from "./services/word-visit.service";
 
 export type AppControllers = {
-  healthController: typeof HealthController;
+  healthController: HealthController;
   indonesianFigureController: IndonesianFigureController;
   kbbiController: KbbiController;
   proverbController: ProverbController;
@@ -28,7 +28,7 @@ export function createAppDependencies(): AppDependencies {
 
   return {
     controllers: {
-      healthController: HealthController,
+      healthController: new HealthController(),
       indonesianFigureController: new IndonesianFigureController(indonesianFigureService),
       kbbiController: new KbbiController(kbbiService, wordVisitService),
       proverbController: new ProverbController(proverbService),

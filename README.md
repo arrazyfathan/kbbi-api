@@ -153,9 +153,11 @@ The first migration creates `public.word_visits` and an index on `word`. The sec
 
 ### Verify Supabase
 
-After configuring `.env` and starting the API, verify the connection:
+After configuring `.env` and starting the API, verify process liveness, app readiness, and Supabase connectivity:
 
 ```bash
+curl http://localhost:3000/health/live
+curl http://localhost:3000/health/ready
 curl http://localhost:3000/health/supabase
 ```
 
@@ -291,7 +293,7 @@ For production deployment:
 1. Configure the environment variables in the hosting provider.
 2. Apply Supabase migrations.
 3. Deploy the app.
-4. Confirm `GET /health/supabase` reports the expected Supabase connection status.
+4. Confirm `GET /health/live`, `GET /health/ready`, and `GET /health/supabase` report the expected runtime status.
 
 ## Visit Tracking Behavior
 

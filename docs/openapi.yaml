@@ -41,6 +41,8 @@ paths:
                   value:
                     message: Welcome to New KBBI API
                     endpoints:
+                      - /health/live
+                      - /health/ready
                       - /health/supabase
                       - /search/[word]
                       - /words/top
@@ -51,6 +53,8 @@ paths:
                       - /figure/search
                       - /figure/[slug]
                     examples:
+                      - http://localhost:3000/health/live
+                      - http://localhost:3000/health/ready
                       - http://localhost:3000/health/supabase
                       - http://localhost:3000/search/demokrasi
                       - http://localhost:3000/words/top?limit=10
@@ -64,6 +68,76 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Check process liveness.
+      description: Confirms the API process is running without checking external dependencies.
+      operationId: getLivenessHealth
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+      responses:
+        "200":
+          description: The API process is alive and responding to HTTP requests.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessHealthResponse"
+              examples:
+                alive:
+                  value:
+                    success: true
+                    message: Process is alive
+                    data:
+                      alive: true
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Check application readiness.
+      description: Checks required configured dependencies and reports whether the app can serve traffic.
+      operationId: getReadinessHealth
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+      responses:
+        "200":
+          description: Application is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessHealthResponse"
+              examples:
+                ready:
+                  value:
+                    success: true
+                    message: Application is ready
+                    data:
+                      ready: true
+                      dependencies:
+                        - name: supabase
+                          status: skipped
+                          required: false
+                          host: ""
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          description: A configured required dependency is unavailable.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ReadinessHealth"
   /health/supabase:
     get:
       tags:
@@ -694,6 +768,77 @@ components:
           const: true
         message:
           type: string
+    LivenessHealth:
+      description: Process liveness status data.
+      type: object
+      required:
+        - alive
+      properties:
+        alive:
+          type: boolean
+          const: true
+    LivenessHealthResponse:
+      description: Successful liveness health response envelope.
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/LivenessHealth"
+    DependencyHealth:
+      description: Readiness status for one configured or optional dependency.
+      type: object
+      required:
+        - name
+        - status
+        - required
+        - host
+      properties:
+        name:
+          type: string
+          enum:
+            - supabase
+        status:
+          type: string
+          enum:
+            - ok
+            - failed
+            - skipped
+        required:
+          type: boolean
+        host:
+          anyOf:
+            - type: string
+            - type: "null"
+        statusCode:
+          type: integer
+        statusText:
+          type: string
+    ReadinessHealth:
+      description: Application readiness status data.
+      type: object
+      required:
+        - ready
+        - dependencies
+      properties:
+        ready:
+          type: boolean
+        dependencies:
+          type: array
+          items:
+            $ref: "#/components/schemas/DependencyHealth"
+    ReadinessHealthResponse:
+      description: Successful readiness health response envelope.
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/ReadinessHealth"
     ErrorResponse:
       description: Common envelope emitted by error and rate-limit middleware.
       type: object

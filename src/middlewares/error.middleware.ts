@@ -67,6 +67,16 @@ export const errorMiddleware: ErrorRequestHandler = (error, req, res, next) => {
       method: req.method,
       path: req.originalUrl || req.url,
       statusCode,
+      ...(isUpstreamHttpError(error)
+        ? {
+            upstream: error.upstream,
+            upstreamHost: error.urlHost,
+            upstreamStatus: error.upstreamStatus,
+            upstreamDurationMs: error.durationMs,
+            upstreamAttempts: error.attempts,
+            upstreamErrorCode: error.errorCode,
+          }
+        : {}),
     },
     "Request failed",
   );

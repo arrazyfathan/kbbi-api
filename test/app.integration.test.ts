@@ -9,6 +9,7 @@ import ProverbController from "../src/controllers/proverb.controller";
 import WordController from "../src/controllers/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
+import { HealthService } from "../src/services/health.service";
 
 let testServices: ReturnType<typeof createTestServices>;
 
@@ -27,11 +28,136 @@ describe("Express app integration", () => {
       message: "Welcome to New KBBI API",
     });
     expect(response.body.endpoints).toEqual(
-      expect.arrayContaining(["/search/[word]", "/words/top", "/proverb/search"]),
+      expect.arrayContaining(["/health/live", "/health/ready", "/search/[word]", "/words/top", "/proverb/search"]),
     );
     expect(response.body.examples).toEqual(
-      expect.arrayContaining(["http://localhost:3000/search/demokrasi", "http://localhost:3000/words/top?limit=10"]),
+      expect.arrayContaining([
+        "http://localhost:3000/health/live",
+        "http://localhost:3000/health/ready",
+        "http://localhost:3000/search/demokrasi",
+        "http://localhost:3000/words/top?limit=10",
+      ]),
     );
+  });
+
+  it("returns liveness health without dependency checks", async () => {
+    const response = await request(createApp()).get("/health/live");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      message: "Process is alive",
+      data: {
+        alive: true,
+      },
+    });
+  });
+
+  it("returns ready when configured dependencies are healthy", async () => {
+    testServices.healthService.ready.mockResolvedValueOnce({
+      ready: true,
+      dependencies: [
+        {
+          name: "supabase",
+          status: "ok",
+          required: true,
+          host: "project.supabase.co",
+          statusCode: 200,
+          statusText: "OK",
+        },
+      ],
+    });
+
+    const response = await request(createApp()).get("/health/ready");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      message: "Application is ready",
+      data: {
+        ready: true,
+        dependencies: [
+          {
+            name: "supabase",
+            status: "ok",
+            required: true,
+            host: "project.supabase.co",
+            statusCode: 200,
+            statusText: "OK",
+          },
+        ],
+      },
+    });
+  });
+
+  it("returns not ready when a configured dependency fails", async () => {
+    testServices.healthService.ready.mockResolvedValueOnce({
+      ready: false,
+      dependencies: [
+        {
+          name: "supabase",
+          status: "failed",
+          required: true,
+          host: "project.supabase.co",
+          statusCode: 503,
+          statusText: "Service Unavailable",
+          error: "upstream unavailable",
+        },
+      ],
+    });
+
+    const response = await request(createApp()).get("/health/ready").set("X-Request-Id", "ready-request-1");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      success: false,
+      message: "Application is not ready",
+      code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+      requestId: "ready-request-1",
+      data: {
+        ready: false,
+        dependencies: [
+          {
+            name: "supabase",
+            status: "failed",
+            required: true,
+            host: "project.supabase.co",
+            statusCode: 503,
+            statusText: "Service Unavailable",
+          },
+        ],
+      },
+      error: "upstream unavailable",
+    });
+  });
+
+  it("keeps Supabase health behavior covered", async () => {
+    testServices.healthService.supabaseDependency.mockResolvedValueOnce({
+      name: "supabase",
+      status: "failed",
+      required: true,
+      host: "project.supabase.co",
+      statusCode: 503,
+      statusText: "Service Unavailable",
+      error: "upstream unavailable",
+    });
+
+    const response = await request(createApp()).get("/health/supabase").set("X-Request-Id", "supabase-request-1");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      success: false,
+      message: "Supabase connection failed",
+      code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+      requestId: "supabase-request-1",
+      data: {
+        connected: false,
+        host: "project.supabase.co",
+        status: 503,
+        statusText: "Service Unavailable",
+      },
+      error: "upstream unavailable",
+    });
   });
 
   it("searches a word through the real route and middleware stack", async () => {
@@ -178,13 +304,34 @@ function createTestServices() {
       getTopVisitedWords: vi.fn(),
       trackWordVisit: vi.fn(),
     },
+    healthService: {
+      live: vi.fn(() => ({ alive: true })),
+      ready: vi.fn(async () => ({
+        ready: true,
+        dependencies: [
+          {
+            name: "supabase" as const,
+            status: "skipped" as const,
+            required: false,
+            host: null,
+          },
+        ],
+      })),
+      supabaseDependency: vi.fn(async () => ({
+        name: "supabase" as const,
+        status: "failed" as const,
+        required: false,
+        host: null,
+        error: "Missing SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
+      })),
+    },
   };
 }
 
 function createTestDependencies(services: ReturnType<typeof createTestServices>): AppDependencies {
   return {
     controllers: {
-      healthController: HealthController,
+      healthController: new HealthController(services.healthService as unknown as HealthService),
       indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
       kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
       proverbController: new ProverbController(services.proverbService),

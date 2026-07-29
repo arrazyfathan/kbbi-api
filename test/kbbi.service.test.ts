@@ -37,6 +37,7 @@ describe("KbbiService", () => {
 
     expect(getScraperHtml).toHaveBeenCalledWith("https://kbbi.example.test/entri/ajar", {
       timeoutMs: 45000,
+      upstream: "kbbi",
     });
   });
 });

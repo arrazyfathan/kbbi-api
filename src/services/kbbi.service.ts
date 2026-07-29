@@ -24,6 +24,7 @@ export class KbbiService {
   private async fetchHtml(word: string): Promise<string> {
     return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`, {
       timeoutMs: config.upstream.kbbiFetchTimeoutMs,
+      upstream: "kbbi",
     });
   }
 

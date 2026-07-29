@@ -32,6 +32,8 @@ describe("OpenAPI documentation", () => {
     expect(Object.keys(openApiSpec.paths)).toEqual(
       expect.arrayContaining([
         "/",
+        "/health/live",
+        "/health/ready",
         "/health/supabase",
         "/search/{word}",
         "/words/top",

@@ -123,6 +123,50 @@ describe("IndonesianFigureService", () => {
     expect(getScraperHtml).toHaveBeenCalledTimes(2);
   });
 
+  it("logs list cache misses and hits", async () => {
+    let now = 0;
+    const logger = { info: vi.fn() };
+    const getScraperHtml = vi.fn(async (url: string) => {
+      if (url.includes("pagefrom=Hatta")) {
+        return '<html><body><div id="mw-pages"></div></body></html>';
+      }
+
+      return fixture("figure-category.html");
+    });
+
+    vi.doMock("../src/lib/logger", () => ({
+      default: logger,
+    }));
+
+    const { IndonesianFigureService } = await loadService(getScraperHtml);
+    const service = new IndonesianFigureService({ now: () => now });
+
+    await service.list(1, 20);
+    now = 1000;
+    await service.search("soekarno", 1, 20);
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "cache_lookup",
+        cacheName: "wikiquote_figure_list",
+        cacheKey: "all",
+        cacheHit: false,
+        ttlMs: 3600000,
+      }),
+      "Scraper cache miss",
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "cache_lookup",
+        cacheName: "wikiquote_figure_list",
+        cacheKey: "all",
+        cacheHit: true,
+        ttlMs: 3600000,
+      }),
+      "Scraper cache hit",
+    );
+  });
+
   it("fetches list data again after TTL expires", async () => {
     let now = 0;
     const getScraperHtml = vi.fn(async (url: string) => {
