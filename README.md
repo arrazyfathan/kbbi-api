@@ -182,6 +182,9 @@ Before opening a pull request, run the full local quality gate:
 npm run check
 ```
 
+Pull requests should pass the GitHub Actions CI workflow before merge. CI installs dependencies with `npm ci` and runs
+the same full quality gate.
+
 ## Rate Limiting
 
 The API applies a loose global limit to all routes and a stricter limit to scraper-backed search routes. By default, each IP can make `300` total requests per `15` minutes and `30` requests per `15` minutes to these endpoints:
