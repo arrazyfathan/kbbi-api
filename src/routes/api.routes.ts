@@ -17,32 +17,41 @@ export function createApiRouter(controllers: AppControllers): Router {
         "/health/live",
         "/health/ready",
         "/health/supabase",
-        "/search/[word]",
-        "/words/top",
-        "/proverb",
-        "/proverb/search",
-        "/proverb/[slug]",
-        "/figure",
-        "/figure/search",
-        "/figure/[slug]",
+        "/api/v1/search/[word]",
+        "/api/v1/words/top",
+        "/api/v1/proverb",
+        "/api/v1/proverb/search",
+        "/api/v1/proverb/[slug]",
+        "/api/v1/figure",
+        "/api/v1/figure/search",
+        "/api/v1/figure/[slug]",
       ],
       examples: [
         `${config.baseUrl}/health/live`,
         `${config.baseUrl}/health/ready`,
         `${config.baseUrl}/health/supabase`,
-        `${config.baseUrl}/search/demokrasi`,
-        `${config.baseUrl}/words/top?limit=10`,
-        `${config.baseUrl}/proverb?page=1&limit=20`,
-        `${config.baseUrl}/proverb/search?q=air`,
-        `${config.baseUrl}/proverb/Abu_saja_tak_hinggap`,
-        `${config.baseUrl}/figure?page=1&limit=10`,
-        `${config.baseUrl}/figure/search?q=soekarno`,
-        `${config.baseUrl}/figure/Soekarno`,
+        `${config.baseUrl}/api/v1/search/demokrasi`,
+        `${config.baseUrl}/api/v1/words/top?limit=10`,
+        `${config.baseUrl}/api/v1/proverb?page=1&limit=20`,
+        `${config.baseUrl}/api/v1/proverb/search?q=air`,
+        `${config.baseUrl}/api/v1/proverb/Abu_saja_tak_hinggap`,
+        `${config.baseUrl}/api/v1/figure?page=1&limit=10`,
+        `${config.baseUrl}/api/v1/figure/search?q=soekarno`,
+        `${config.baseUrl}/api/v1/figure/Soekarno`,
       ],
     });
   });
 
   router.use(createHealthRouter(controllers.healthController));
+  router.use("/api/v1", createDomainRouter(controllers));
+  router.use(createDomainRouter(controllers));
+
+  return router;
+}
+
+function createDomainRouter(controllers: AppControllers): Router {
+  const router = Router();
+
   router.use(createKbbiRouter(controllers.kbbiController));
   router.use(createWordVisitRouter(controllers.wordController));
   router.use(createProverbRouter(controllers.proverbController));

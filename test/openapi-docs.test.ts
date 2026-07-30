@@ -43,6 +43,14 @@ describe("OpenAPI documentation", () => {
         "/figure",
         "/figure/search",
         "/figure/{slug}",
+        "/api/v1/search/{word}",
+        "/api/v1/words/top",
+        "/api/v1/proverb",
+        "/api/v1/proverb/search",
+        "/api/v1/proverb/{slug}",
+        "/api/v1/figure",
+        "/api/v1/figure/search",
+        "/api/v1/figure/{slug}",
       ]),
     );
   });

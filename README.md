@@ -22,14 +22,16 @@ When the server is running, interactive Swagger UI is available at `http://local
 Quick examples:
 
 ```bash
-curl http://localhost:3000/search/demokrasi
-curl -H "X-Request-Id: local-debug-1" http://localhost:3000/search/demokrasi
-curl -H "X-Visitor-Id: anonymous-client-id" http://localhost:3000/search/demokrasi
-curl http://localhost:3000/words/top?limit=10
-curl "http://localhost:3000/proverb/search?q=air&page=1&limit=5"
-curl "http://localhost:3000/figure/search?q=soekarno"
-curl "http://localhost:3000/figure/Soekarno"
+curl http://localhost:3000/api/v1/search/demokrasi
+curl -H "X-Request-Id: local-debug-1" http://localhost:3000/api/v1/search/demokrasi
+curl -H "X-Visitor-Id: anonymous-client-id" http://localhost:3000/api/v1/search/demokrasi
+curl http://localhost:3000/api/v1/words/top?limit=10
+curl "http://localhost:3000/api/v1/proverb/search?q=air&page=1&limit=5"
+curl "http://localhost:3000/api/v1/figure/search?q=soekarno"
+curl "http://localhost:3000/api/v1/figure/Soekarno"
 ```
+
+Domain endpoints are versioned under `/api/v1`. Legacy root-level domain routes remain available temporarily for backward compatibility during migration.
 
 Every response includes an `x-request-id` header. Provide `X-Request-Id` to preserve a client-generated correlation ID, or omit it and the API will generate one.
 
@@ -39,7 +41,7 @@ Every response includes an `x-request-id` header. Provide `X-Request-Id` to pres
 - npm.
 - Supabase project for word visit tracking and top visited words.
 
-The scraping endpoints can run without Supabase, but word visit tracking and `/words/top` require Supabase configuration.
+The scraping endpoints can run without Supabase, but word visit tracking and `/api/v1/words/top` require Supabase configuration.
 
 ## Environment Variables
 
@@ -57,7 +59,7 @@ KBBI_FETCH_TIMEOUT_MS=45000
 # Required in production. Use a long random server-only secret for visitor ID hashing.
 VISITOR_HASH_SALT=replace-with-random-secret
 
-# Optional for scraping endpoints. Required together for visit tracking and /words/top.
+# Optional for scraping endpoints. Required together for visit tracking and /api/v1/words/top.
 SUPABASE_URL=https://your-project.supabase.co
 # Required for visit tracking with the bundled migrations.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -109,7 +111,7 @@ supabase/migrations/20260722022955_secure_word_visits_rls.sql
 supabase/migrations/20260728021955_improve_word_visit_indexes_rls_docs.sql
 ```
 
-The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /words/top`. Row-Level Security is enabled and direct `anon`/`authenticated` access is revoked because this API accesses Supabase through the backend service role. Do not expose the service role key to browser or mobile clients.
+The `word_visits` table stores one unique visit per `word`, `visitor_hash`, and `visited_date`. The `top_word_visits` view powers `GET /api/v1/words/top`. Row-Level Security is enabled and direct `anon`/`authenticated` access is revoked because this API accesses Supabase through the backend service role. Do not expose the service role key to browser or mobile clients.
 
 ### Local Supabase CLI
 
@@ -149,7 +151,7 @@ The first migration creates `public.word_visits` and an index on `word`. The sec
 - `(visitor_hash, visited_date)` supports visitor/day analysis without storing raw visitor IDs.
 - The existing unique constraint on `(word, visitor_hash, visited_date)` remains the daily de-duplication and upsert conflict target.
 
-`top_word_visits` intentionally remains a regular view so `/words/top` reads live counts. Revisit a materialized view only if production volume makes the aggregate slow and a refresh cadence is acceptable.
+`top_word_visits` intentionally remains a regular view so `/api/v1/words/top` reads live counts. Revisit a materialized view only if production volume makes the aggregate slow and a refresh cadence is acceptable.
 
 ### Verify Supabase
 
@@ -164,8 +166,8 @@ curl http://localhost:3000/health/supabase
 Then verify visit tracking by sending a stable visitor ID:
 
 ```bash
-curl -H "X-Visitor-Id: local-test-user" http://localhost:3000/search/demokrasi
-curl http://localhost:3000/words/top?limit=10
+curl -H "X-Visitor-Id: local-test-user" http://localhost:3000/api/v1/search/demokrasi
+curl http://localhost:3000/api/v1/words/top?limit=10
 ```
 
 ## Development
@@ -192,9 +194,9 @@ the same full quality gate.
 The API applies a loose global limit to all routes and a stricter limit to scraper-backed search routes. By default, each IP can make `300` total requests per `15` minutes and `30` requests per `15` minutes to these endpoints:
 
 ```text
-GET /search/:word
-GET /proverb/search
-GET /figure/search
+GET /api/v1/search/:word
+GET /api/v1/proverb/search
+GET /api/v1/figure/search
 ```
 
 Requests over the limit return HTTP `429`:
@@ -210,9 +212,9 @@ Standard `RateLimit` headers are included where supported. The default limiter u
 
 ## Indonesian Figures
 
-`GET /figure` and `GET /figure/search` return paginated summaries by default. Summary items contain `name`, `slug`, and `sourceUrl`; use `GET /figure/:slug` for full `photo`, `description`, and `quotes`.
+`GET /api/v1/figure` and `GET /api/v1/figure/search` return paginated summaries by default. Summary items contain `name`, `slug`, and `sourceUrl`; use `GET /api/v1/figure/:slug` for full `photo`, `description`, and `quotes`.
 
-For compatibility with older detailed list responses, pass `includeDetails=true` to `/figure` or `/figure/search`. This opt-in mode fetches detail pages for the current page items, so it is slower than the default summary response.
+For compatibility with older detailed list responses, pass `includeDetails=true` to `/api/v1/figure` or `/api/v1/figure/search`. This opt-in mode fetches detail pages for the current page items, so it is slower than the default summary response.
 
 ## Available Scripts
 
@@ -297,7 +299,7 @@ For production deployment:
 
 ## Visit Tracking Behavior
 
-Clients may send `X-Visitor-Id` when calling `GET /search/:word`. The API combines this value with `VISITOR_HASH_SALT`, stores only the resulting SHA-256 hash, and counts one unique visit per word, visitor, and day. Raw visitor IDs are not stored or logged. Search responses include `visitorCount`; it is `null` when the header is missing or Supabase tracking is unavailable.
+Clients may send `X-Visitor-Id` when calling `GET /api/v1/search/:word`. The API combines this value with `VISITOR_HASH_SALT`, stores only the resulting SHA-256 hash, and counts one unique visit per word, visitor, and day. Raw visitor IDs are not stored or logged. Search responses include `visitorCount`; it is `null` when the header is missing or Supabase tracking is unavailable.
 
 Changing `VISITOR_HASH_SALT` changes the generated visitor hashes, so existing visitor identity buckets will no longer match new requests.
 

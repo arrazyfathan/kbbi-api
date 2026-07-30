@@ -44,26 +44,26 @@ paths:
                       - /health/live
                       - /health/ready
                       - /health/supabase
-                      - /search/[word]
-                      - /words/top
-                      - /proverb
-                      - /proverb/search
-                      - /proverb/[slug]
-                      - /figure
-                      - /figure/search
-                      - /figure/[slug]
+                      - /api/v1/search/[word]
+                      - /api/v1/words/top
+                      - /api/v1/proverb
+                      - /api/v1/proverb/search
+                      - /api/v1/proverb/[slug]
+                      - /api/v1/figure
+                      - /api/v1/figure/search
+                      - /api/v1/figure/[slug]
                     examples:
                       - http://localhost:3000/health/live
                       - http://localhost:3000/health/ready
                       - http://localhost:3000/health/supabase
-                      - http://localhost:3000/search/demokrasi
-                      - http://localhost:3000/words/top?limit=10
-                      - http://localhost:3000/proverb?page=1&limit=20
-                      - http://localhost:3000/proverb/search?q=air
-                      - http://localhost:3000/proverb/Abu_saja_tak_hinggap
-                      - http://localhost:3000/figure?page=1&limit=10
-                      - http://localhost:3000/figure/search?q=soekarno
-                      - http://localhost:3000/figure/Soekarno
+                      - http://localhost:3000/api/v1/search/demokrasi
+                      - http://localhost:3000/api/v1/words/top?limit=10
+                      - http://localhost:3000/api/v1/proverb?page=1&limit=20
+                      - http://localhost:3000/api/v1/proverb/search?q=air
+                      - http://localhost:3000/api/v1/proverb/Abu_saja_tak_hinggap
+                      - http://localhost:3000/api/v1/figure?page=1&limit=10
+                      - http://localhost:3000/api/v1/figure/search?q=soekarno
+                      - http://localhost:3000/api/v1/figure/Soekarno
         "429":
           $ref: "#/components/responses/RateLimited"
         "500":
@@ -229,6 +229,56 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/search/{word}:
+    get:
+      tags:
+        - Words
+      summary: Search a KBBI word.
+      description: Searches KBBI for the requested word and optionally tracks a visitor-scoped daily visit.
+      operationId: searchWordV1
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/WordPath"
+        - $ref: "#/components/parameters/VisitorIdHeader"
+      responses:
+        "200":
+          description: KBBI word search result payload.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/KbbiSearchResult"
+              examples:
+                found:
+                  value:
+                    success: true
+                    message: Search successful
+                    data:
+                      word: demokrasi
+                      visitorCount: 12
+                      entries:
+                        - headword: de.mo.kra.si /démokrasi/
+                          definitions:
+                            - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
+                              description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/WordNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
   /words/top:
     get:
       tags:
@@ -236,6 +286,48 @@ paths:
       summary: Return the most visited KBBI words.
       description: Returns the most visited words recorded by the visitor tracking store.
       operationId: getTopWords
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/TopWordsLimit"
+      responses:
+        "200":
+          description: Top visited word ranking payload.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TopVisitedWordsResult"
+              examples:
+                default:
+                  value:
+                    success: true
+                    message: Top visited words fetched successfully
+                    data:
+                      count: 2
+                      items:
+                        - word: demokrasi
+                          visitorCount: 12
+                        - word: ajar
+                          visitorCount: 8
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/words/top:
+    get:
+      tags:
+        - Words
+      summary: Return the most visited KBBI words.
+      description: Returns the most visited words recorded by the visitor tracking store.
+      operationId: getTopWordsV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/TopWordsLimit"
@@ -318,6 +410,53 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/proverb:
+    get:
+      tags:
+        - Proverbs
+      summary: List Indonesian proverbs.
+      description: Returns a paginated list of Indonesian proverbs from Wikiquote.
+      operationId: listProverbsV1
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/ProverbLimit"
+      responses:
+        "200":
+          description: Paginated proverb list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProverbResponse"
+              examples:
+                default:
+                  value:
+                    success: true
+                    message: Proverb list fetched successfully
+                    data:
+                      source: https://id.wikiquote.org/wiki/Peribahasa_Indonesia
+                      pagination:
+                        page: 1
+                        limit: 20
+                        total: 1371
+                        totalPages: 69
+                        hasNextPage: true
+                        hasPreviousPage: false
+                      items:
+                        - text: Ada gula ada semut
+                          letter: A
+                          slug: Ada_gula_ada_semut
+                          sourceUrl: https://id.wikiquote.org/wiki/Ada_gula_ada_semut
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
   /proverb/search:
     get:
       tags:
@@ -347,6 +486,35 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/proverb/search:
+    get:
+      tags:
+        - Proverbs
+      summary: Search Indonesian proverbs by text.
+      description: Searches Indonesian proverbs by required keyword and returns paginated matches.
+      operationId: searchProverbsV1
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/ProverbLimit"
+      responses:
+        "200":
+          description: Paginated proverb search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedProverbResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
   /proverb/{slug}:
     get:
       tags:
@@ -354,6 +522,53 @@ paths:
       summary: Return one proverb detail page.
       description: Returns the detail and meaning for a single proverb slug.
       operationId: getProverb
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/ProverbSlug"
+      responses:
+        "200":
+          description: Indonesian proverb detail payload.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProverbDetail"
+              examples:
+                default:
+                  value:
+                    success: true
+                    message: Proverb detail fetched successfully
+                    data:
+                      text: Abu saja tak hinggap
+                      letter: A
+                      slug: Abu_saja_tak_hinggap
+                      sourceUrl: https://id.wikiquote.org/wiki/Abu_saja_tak_hinggap
+                      meaning: sesuatu yang sangat bersih dan berkilau
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/ProverbNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/proverb/{slug}:
+    get:
+      tags:
+        - Proverbs
+      summary: Return one proverb detail page.
+      description: Returns the detail and meaning for a single proverb slug.
+      operationId: getProverbV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/ProverbSlug"
@@ -441,6 +656,53 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/figure:
+    get:
+      tags:
+        - Indonesian Figures
+      summary: List Indonesian figures.
+      description: Returns a paginated list of Indonesian figure summaries, with optional detail enrichment.
+      operationId: listIndonesianFiguresV1
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/FigureLimit"
+        - $ref: "#/components/parameters/IncludeFigureDetails"
+      responses:
+        "200":
+          description: Paginated Indonesian figure list. Items are summaries unless includeDetails=true is provided.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedFigureResponse"
+              examples:
+                default:
+                  value:
+                    success: true
+                    message: Indonesian figure list fetched successfully
+                    data:
+                      source: https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia
+                      pagination:
+                        page: 1
+                        limit: 10
+                        total: 346
+                        totalPages: 35
+                        hasNextPage: true
+                        hasPreviousPage: false
+                      items:
+                        - name: Soekarno
+                          slug: Soekarno
+                          sourceUrl: https://id.wikiquote.org/wiki/Soekarno
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
   /figure/search:
     get:
       tags:
@@ -471,6 +733,36 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/figure/search:
+    get:
+      tags:
+        - Indonesian Figures
+      summary: Search Indonesian figures by name.
+      description: Searches Indonesian figures by required keyword and returns paginated matches.
+      operationId: searchIndonesianFiguresV1
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/FigureLimit"
+        - $ref: "#/components/parameters/IncludeFigureDetails"
+      responses:
+        "200":
+          description: Paginated Indonesian figure search results. Items are summaries unless includeDetails=true is provided.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedFigureResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
   /figure/{slug}:
     get:
       tags:
@@ -478,6 +770,55 @@ paths:
       summary: Return one Indonesian figure detail page.
       description: Returns the profile, description, photo, and quotes for a single Indonesian figure slug.
       operationId: getIndonesianFigure
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/FigureSlug"
+      responses:
+        "200":
+          description: Indonesian figure detail.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/IndonesianFigure"
+              examples:
+                default:
+                  value:
+                    success: true
+                    message: Indonesian figure detail fetched successfully
+                    data:
+                      name: Soekarno
+                      slug: Soekarno
+                      sourceUrl: https://id.wikiquote.org/wiki/Soekarno
+                      photo: https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg
+                      description: Soekarno adalah presiden pertama Republik Indonesia yang menjabat pada kurun waktu 1945-1967.
+                      quotes:
+                        - Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/FigureNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/figure/{slug}:
+    get:
+      tags:
+        - Indonesian Figures
+      summary: Return one Indonesian figure detail page.
+      description: Returns the profile, description, photo, and quotes for a single Indonesian figure slug.
+      operationId: getIndonesianFigureV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
         - $ref: "#/components/parameters/FigureSlug"

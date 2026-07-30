@@ -60,6 +60,7 @@ describe("OpenAPI response contracts", () => {
     ]);
     testServices.wordVisitService.trackWordVisit.mockResolvedValueOnce(12);
     testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([{ word: "demokrasi", visitorCount: 12 }]);
+    testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([{ word: "demokrasi", visitorCount: 12 }]);
     testServices.proverbService.search.mockResolvedValueOnce({
       source: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
       pagination: {
@@ -76,6 +77,43 @@ describe("OpenAPI response contracts", () => {
           letter: "A",
           slug: "Ada_gula_ada_semut",
           sourceUrl: "https://id.wikiquote.org/wiki/Ada_gula_ada_semut",
+        },
+      ],
+    });
+    testServices.proverbService.search.mockResolvedValueOnce({
+      source: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+      items: [
+        {
+          text: "Ada gula ada semut",
+          letter: "A",
+          slug: "Ada_gula_ada_semut",
+          sourceUrl: "https://id.wikiquote.org/wiki/Ada_gula_ada_semut",
+        },
+      ],
+    });
+    testServices.indonesianFigureService.search.mockResolvedValueOnce({
+      source: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+      items: [
+        {
+          name: "Soekarno",
+          slug: "Soekarno",
+          sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
         },
       ],
     });
@@ -135,6 +173,21 @@ describe("OpenAPI response contracts", () => {
       path: "/figure/search",
       status: 200,
     });
+    expectResponseToMatchContract(await request(app).get("/api/v1/words/top?limit=1"), {
+      method: "get",
+      path: "/api/v1/words/top",
+      status: 200,
+    });
+    expectResponseToMatchContract(await request(app).get("/api/v1/proverb/search?q=gula"), {
+      method: "get",
+      path: "/api/v1/proverb/search",
+      status: 200,
+    });
+    expectResponseToMatchContract(await request(app).get("/api/v1/figure/search?q=soekarno"), {
+      method: "get",
+      path: "/api/v1/figure/search",
+      status: 200,
+    });
   });
 
   it("validates documented validation and upstream error response contracts", async () => {
@@ -156,6 +209,11 @@ describe("OpenAPI response contracts", () => {
       method: "get",
       path: "/search/{word}",
       status: 502,
+    });
+    expectResponseToMatchContract(await request(app).get("/api/v1/proverb/search"), {
+      method: "get",
+      path: "/api/v1/proverb/search",
+      status: 400,
     });
   });
 

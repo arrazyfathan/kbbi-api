@@ -4,6 +4,8 @@
 
 `http://localhost:3000`
 
+Versioned domain endpoints are available under `/api/v1`. Legacy root-level domain routes remain available temporarily for backward compatibility during migration.
+
 ## Error Response Contract
 
 Every API response includes an `x-request-id` response header. Clients may send `X-Request-Id` to provide their own correlation ID; when omitted, the API generates one. Request and error logs use the same request ID.
@@ -65,24 +67,24 @@ Returns basic information about the API.
     {
       "message": "Welcome to New KBBI API",
       "endpoints": [
-        "/search/[word]",
-        "/words/top",
-        "/proverb",
-        "/proverb/search",
-        "/proverb/[slug]",
-        "/figure",
-        "/figure/search",
-        "/figure/[slug]"
+        "/api/v1/search/[word]",
+        "/api/v1/words/top",
+        "/api/v1/proverb",
+        "/api/v1/proverb/search",
+        "/api/v1/proverb/[slug]",
+        "/api/v1/figure",
+        "/api/v1/figure/search",
+        "/api/v1/figure/[slug]"
       ],
       "examples": [
-        "http://localhost:3000/search/demokrasi",
-        "http://localhost:3000/words/top?limit=10",
-        "http://localhost:3000/proverb?page=1&limit=20",
-        "http://localhost:3000/proverb/search?q=air",
-        "http://localhost:3000/proverb/Abu_saja_tak_hinggap",
-        "http://localhost:3000/figure?page=1&limit=10",
-        "http://localhost:3000/figure/search?q=soekarno",
-        "http://localhost:3000/figure/Soekarno"
+        "http://localhost:3000/api/v1/search/demokrasi",
+        "http://localhost:3000/api/v1/words/top?limit=10",
+        "http://localhost:3000/api/v1/proverb?page=1&limit=20",
+        "http://localhost:3000/api/v1/proverb/search?q=air",
+        "http://localhost:3000/api/v1/proverb/Abu_saja_tak_hinggap",
+        "http://localhost:3000/api/v1/figure?page=1&limit=10",
+        "http://localhost:3000/api/v1/figure/search?q=soekarno",
+        "http://localhost:3000/api/v1/figure/Soekarno"
       ]
     }
     ```
@@ -91,7 +93,7 @@ Returns basic information about the API.
 
 Searches for a specific word in the KBBI database.
 
-- **URL**: `/search/:word`
+- **URL**: `/api/v1/search/:word`
 - **Method**: `GET`
 - **URL Params**:
   - `word` (Required): The word to search for.
@@ -151,11 +153,11 @@ Searches for a specific word in the KBBI database.
 
 Returns the most visited KBBI words, ranked by all-time unique daily visitor records.
 
-- **URL**: `/words/top`
+- **URL**: `/api/v1/words/top`
 - **Method**: `GET`
 - **Query Params**:
   - `limit` (Optional): Number of words to return. Defaults to `10`, maximum `100`.
-- **Example**: `/words/top?limit=10`
+- **Example**: `/api/v1/words/top?limit=10`
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -183,7 +185,7 @@ Returns the most visited KBBI words, ranked by all-time unique daily visitor rec
 
 Returns paginated Indonesian proverbs scraped from Wikiquote.
 
-- **URL**: `/proverb`
+- **URL**: `/api/v1/proverb`
 - **Method**: `GET`
 - **Query Params**:
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
@@ -194,7 +196,7 @@ Returns paginated Indonesian proverbs scraped from Wikiquote.
   - `totalPages` is calculated from `total` and `limit`.
   - `hasNextPage` and `hasPreviousPage` indicate whether adjacent pages are available.
   - If `page` is greater than `totalPages`, `items` will be an empty array.
-- **Example**: `/proverb?page=1&limit=20`
+- **Example**: `/api/v1/proverb?page=1&limit=20`
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -228,13 +230,13 @@ Returns paginated Indonesian proverbs scraped from Wikiquote.
 
 Searches proverbs by text and returns paginated results.
 
-- **URL**: `/proverb/search`
+- **URL**: `/api/v1/proverb/search`
 - **Method**: `GET`
 - **Query Params**:
   - `q` (Required): Search keyword.
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `100`.
-- **Example**: `/proverb/search?q=gula&page=1&limit=5`
+- **Example**: `/api/v1/proverb/search?q=gula&page=1&limit=5`
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -285,11 +287,11 @@ Searches proverbs by text and returns paginated results.
 
 Returns a proverb and its meaning from the proverb detail page.
 
-- **URL**: `/proverb/:slug`
+- **URL**: `/api/v1/proverb/:slug`
 - **Method**: `GET`
 - **URL Params**:
-  - `slug` (Required): Wikiquote page slug for the proverb. Use the `slug` returned from `/proverb` or `/proverb/search`.
-- **Example**: `/proverb/Abu_saja_tak_hinggap`
+  - `slug` (Required): Wikiquote page slug for the proverb. Use the `slug` returned from `/api/v1/proverb` or `/api/v1/proverb/search`.
+- **Example**: `/api/v1/proverb/Abu_saja_tak_hinggap`
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -321,13 +323,13 @@ Returns a proverb and its meaning from the proverb detail page.
 
 Returns paginated Indonesian figure summaries scraped from Wikiquote. By default, items include only `name`, `slug`, and `sourceUrl` so the endpoint does not fetch every detail page.
 
-- **URL**: `/figure`
+- **URL**: `/api/v1/figure`
 - **Method**: `GET`
 - **Query Params**:
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
   - `includeDetails` (Optional): Set to `true` to include `photo`, `description`, and `quotes` in each item. Defaults to `false`.
-- **Example**: `/figure?page=1&limit=10`
+- **Example**: `/api/v1/figure?page=1&limit=10`
 - **Success Response**:
   - **Code**: 200 OK
   - **Content**:
@@ -360,24 +362,24 @@ Returns paginated Indonesian figure summaries scraped from Wikiquote. By default
 
 Searches Indonesian figures by name and returns paginated summaries by default.
 
-- **URL**: `/figure/search`
+- **URL**: `/api/v1/figure/search`
 - **Method**: `GET`
 - **Query Params**:
   - `q` (Required): Search keyword.
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
   - `includeDetails` (Optional): Set to `true` to include `photo`, `description`, and `quotes` in each item. Defaults to `false`.
-- **Example**: `/figure/search?q=soekarno`
+- **Example**: `/api/v1/figure/search?q=soekarno`
 
 ### 9. Indonesian Figure Detail
 
 Returns one Indonesian figure from a Wikiquote slug.
 
-- **URL**: `/figure/:slug`
+- **URL**: `/api/v1/figure/:slug`
 - **Method**: `GET`
 - **URL Params**:
   - `slug` (Required): Wikiquote page slug, for example `Soekarno`.
-- **Example**: `/figure/Soekarno`
+- **Example**: `/api/v1/figure/Soekarno`
 - **Nullable Fields**:
   - `name`, `photo`, `description`, and `quotes` may be `null` when Wikiquote does not provide that data.
 - **Error Responses**:

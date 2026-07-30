@@ -28,14 +28,20 @@ describe("Express app integration", () => {
       message: "Welcome to New KBBI API",
     });
     expect(response.body.endpoints).toEqual(
-      expect.arrayContaining(["/health/live", "/health/ready", "/search/[word]", "/words/top", "/proverb/search"]),
+      expect.arrayContaining([
+        "/health/live",
+        "/health/ready",
+        "/api/v1/search/[word]",
+        "/api/v1/words/top",
+        "/api/v1/proverb/search",
+      ]),
     );
     expect(response.body.examples).toEqual(
       expect.arrayContaining([
         "http://localhost:3000/health/live",
         "http://localhost:3000/health/ready",
-        "http://localhost:3000/search/demokrasi",
-        "http://localhost:3000/words/top?limit=10",
+        "http://localhost:3000/api/v1/search/demokrasi",
+        "http://localhost:3000/api/v1/words/top?limit=10",
       ]),
     );
   });
@@ -223,6 +229,59 @@ describe("Express app integration", () => {
     });
   });
 
+  it("serves equivalent domain routes under /api/v1", async () => {
+    testServices.kbbiService.search.mockResolvedValueOnce([
+      {
+        headword: "demokrasi",
+        definitions: [{ wordClass: "n[Nomina]", description: "pemerintahan rakyat" }],
+      },
+    ]);
+    testServices.wordVisitService.trackWordVisit.mockResolvedValueOnce(12);
+    testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([{ word: "demokrasi", visitorCount: 12 }]);
+    testServices.proverbService.list.mockResolvedValueOnce(createPaginatedProverbResult());
+    testServices.proverbService.search.mockResolvedValueOnce(createPaginatedProverbResult());
+    testServices.proverbService.detail.mockResolvedValueOnce({
+      text: "Abu saja tak hinggap",
+      letter: "A",
+      slug: "Abu_saja_tak_hinggap",
+      sourceUrl: "https://id.wikiquote.org/wiki/Abu_saja_tak_hinggap",
+      meaning: "sesuatu yang sangat bersih dan berkilau",
+    });
+    testServices.indonesianFigureService.list.mockResolvedValueOnce(createPaginatedFigureResult());
+    testServices.indonesianFigureService.search.mockResolvedValueOnce(createPaginatedFigureResult());
+    testServices.indonesianFigureService.detail.mockResolvedValueOnce({
+      name: "Soekarno",
+      slug: "Soekarno",
+      sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+      photo: null,
+      description: "Presiden pertama Republik Indonesia",
+      quotes: ["Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"],
+    });
+
+    const app = createApp();
+
+    await expectOk(request(app).get("/api/v1/search/Demokrasi").set("X-Visitor-Id", "client-1"));
+    await expectOk(request(app).get("/api/v1/words/top?limit=1"));
+    await expectOk(request(app).get("/api/v1/proverb?page=1&limit=20"));
+    await expectOk(request(app).get("/api/v1/proverb/search?q=air"));
+    await expectOk(request(app).get("/api/v1/proverb/Abu_saja_tak_hinggap"));
+    await expectOk(request(app).get("/api/v1/figure?page=1&limit=10"));
+    await expectOk(request(app).get("/api/v1/figure/search?q=soekarno"));
+    await expectOk(request(app).get("/api/v1/figure/Soekarno"));
+
+    expect(testServices.kbbiService.search).toHaveBeenCalledWith("Demokrasi");
+    expect(testServices.wordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "client-1");
+    expect(testServices.wordVisitService.getTopVisitedWords).toHaveBeenCalledWith(1);
+    expect(testServices.proverbService.list).toHaveBeenCalledWith(1, 20);
+    expect(testServices.proverbService.search).toHaveBeenCalledWith("air", 1, 20);
+    expect(testServices.proverbService.detail).toHaveBeenCalledWith("Abu_saja_tak_hinggap");
+    expect(testServices.indonesianFigureService.list).toHaveBeenCalledWith(1, 10, { includeDetails: false });
+    expect(testServices.indonesianFigureService.search).toHaveBeenCalledWith("soekarno", 1, 20, {
+      includeDetails: false,
+    });
+    expect(testServices.indonesianFigureService.detail).toHaveBeenCalledWith("Soekarno");
+  });
+
   it("returns validation errors without calling the external-backed service", async () => {
     const response = await request(createApp()).get("/proverb/search");
     const requestId = response.headers["x-request-id"];
@@ -337,5 +396,54 @@ function createTestDependencies(services: ReturnType<typeof createTestServices>)
       proverbController: new ProverbController(services.proverbService),
       wordController: new WordController(services.wordVisitService),
     },
+  };
+}
+
+async function expectOk(requestPromise: Promise<request.Response>) {
+  const response = await requestPromise;
+
+  expect(response.status).toBe(200);
+}
+
+function createPaginatedProverbResult() {
+  return {
+    source: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    },
+    items: [
+      {
+        text: "Ada gula ada semut",
+        letter: "A",
+        slug: "Ada_gula_ada_semut",
+        sourceUrl: "https://id.wikiquote.org/wiki/Ada_gula_ada_semut",
+      },
+    ],
+  };
+}
+
+function createPaginatedFigureResult() {
+  return {
+    source: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    },
+    items: [
+      {
+        name: "Soekarno",
+        slug: "Soekarno",
+        sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+      },
+    ],
   };
 }
