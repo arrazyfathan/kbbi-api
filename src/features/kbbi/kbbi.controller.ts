@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
-import { KbbiService } from "../services/kbbi.service";
-import { ApiResponse, KbbiSearchResult } from "../interfaces/kbbi.interface";
-import { WordVisitService } from "../services/word-visit.service";
-import { parseWordParam } from "../lib/request-validation";
-import logger from "../lib/logger";
-import { notFoundError } from "../lib/api-error";
+import { parseWordParam } from "../../lib/request-validation";
+import logger from "../../lib/logger";
+import { notFoundError } from "../../lib/api-error";
+import type { ApiResponse } from "../../lib/api-response.types";
+import { WordVisitService } from "../word-visits/word-visit.service";
+import { KbbiService } from "./kbbi.service";
+import type { KbbiSearchResult } from "./kbbi.types";
 
 export type KbbiSearchService = Pick<KbbiService, "search">;
 export type WordVisitTrackingService = Pick<WordVisitService, "trackWordVisit">;

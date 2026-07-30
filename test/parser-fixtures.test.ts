@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   parseIndonesianFigureCategoryHtml,
   parseIndonesianFigureDetailHtml,
-} from "../src/services/indonesian-figure.service";
-import { parseKbbiHtml } from "../src/services/kbbi.service";
-import { parseProverbDetailHtml, parseProverbListHtml } from "../src/services/proverb.service";
+} from "../src/features/figures/figure.parser";
+import { parseKbbiHtml } from "../src/features/kbbi/kbbi.parser";
+import { parseProverbDetailHtml, parseProverbListHtml } from "../src/features/proverbs/proverb.parser";
 
 const proverbSourceUrl = "https://id.wikiquote.org/wiki/Peribahasa_Indonesia";
 const figureSourceUrl = "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia";

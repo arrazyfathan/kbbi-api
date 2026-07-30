@@ -1,5 +1,5 @@
 import { ErrorRequestHandler } from "express";
-import { ApiResponse } from "../interfaces/kbbi.interface";
+import type { ApiResponse } from "../lib/api-response.types";
 import { API_ERROR_CODES, isApiError } from "../lib/api-error";
 import { isUpstreamHttpError } from "../lib/http-client";
 import logger from "../lib/logger";

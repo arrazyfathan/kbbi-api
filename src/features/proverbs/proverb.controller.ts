@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { ApiResponse, PaginatedProverbList, ProverbDetail } from "../interfaces/kbbi.interface";
-import { parsePaginationParams, parseRequiredQuery, parseSlugParam } from "../lib/request-validation";
-import { notFoundError } from "../lib/api-error";
-import { ProverbService } from "../services/proverb.service";
+import { parsePaginationParams, parseRequiredQuery, parseSlugParam } from "../../lib/request-validation";
+import { notFoundError } from "../../lib/api-error";
+import type { ApiResponse } from "../../lib/api-response.types";
+import { ProverbService } from "./proverb.service";
+import type { PaginatedProverbList, ProverbDetail } from "./proverb.types";
 
 export type ProverbLookupService = Pick<ProverbService, "list" | "search" | "detail">;
 

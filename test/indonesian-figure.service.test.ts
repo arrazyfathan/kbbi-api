@@ -235,7 +235,7 @@ async function loadService(getScraperHtml: (url: string) => Promise<string>) {
     isHttpNotFound: () => false,
   }));
 
-  return await import("../src/services/indonesian-figure.service");
+  return await import("../src/features/figures/indonesian-figure.service");
 }
 
 function createCategoryHtml(count: number): string {

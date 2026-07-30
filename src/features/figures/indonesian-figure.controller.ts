@@ -1,13 +1,14 @@
 import { Request, Response } from "express";
-import { ApiResponse, IndonesianFigure, PaginatedIndonesianFigureList } from "../interfaces/kbbi.interface";
 import {
   parseBooleanQuery,
   parsePaginationParams,
   parseRequiredQuery,
   parseSlugParam,
-} from "../lib/request-validation";
-import { notFoundError } from "../lib/api-error";
-import { IndonesianFigureService } from "../services/indonesian-figure.service";
+} from "../../lib/request-validation";
+import { notFoundError } from "../../lib/api-error";
+import type { ApiResponse } from "../../lib/api-response.types";
+import { IndonesianFigureService } from "./indonesian-figure.service";
+import type { IndonesianFigure, PaginatedIndonesianFigureList } from "./figure.types";
 
 export type IndonesianFigureLookupService = Pick<IndonesianFigureService, "list" | "search" | "detail">;
 

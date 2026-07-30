@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ProverbController from "../src/controllers/proverb.controller";
+import ProverbController from "../src/features/proverbs/proverb.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 
 describe("ProverbController", () => {

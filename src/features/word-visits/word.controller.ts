@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { ApiResponse, TopVisitedWordsResult } from "../interfaces/kbbi.interface";
-import { normalizeTopWordsLimit, WordVisitService } from "../services/word-visit.service";
+import type { ApiResponse } from "../../lib/api-response.types";
+import { normalizeTopWordsLimit, WordVisitService } from "./word-visit.service";
+import type { TopVisitedWordsResult } from "./word-visit.types";
 
 export type TopVisitedWordsService = Pick<WordVisitService, "getTopVisitedWords">;
 

@@ -1,12 +1,12 @@
-import HealthController from "./controllers/health.controller";
-import IndonesianFigureController from "./controllers/indonesian-figure.controller";
-import KbbiController from "./controllers/kbbi.controller";
-import ProverbController from "./controllers/proverb.controller";
-import WordController from "./controllers/word.controller";
-import { IndonesianFigureService } from "./services/indonesian-figure.service";
-import { KbbiService } from "./services/kbbi.service";
-import { ProverbService } from "./services/proverb.service";
-import { WordVisitService } from "./services/word-visit.service";
+import IndonesianFigureController from "./features/figures/indonesian-figure.controller";
+import { IndonesianFigureService } from "./features/figures/indonesian-figure.service";
+import HealthController from "./features/health/health.controller";
+import KbbiController from "./features/kbbi/kbbi.controller";
+import { KbbiService } from "./features/kbbi/kbbi.service";
+import ProverbController from "./features/proverbs/proverb.controller";
+import { ProverbService } from "./features/proverbs/proverb.service";
+import WordController from "./features/word-visits/word.controller";
+import { WordVisitService } from "./features/word-visits/word-visit.service";
 
 export type AppControllers = {
   healthController: HealthController;

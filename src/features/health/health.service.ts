@@ -1,5 +1,5 @@
-import { checkSupabaseConnection } from "../config/supabase";
-import config from "../config";
+import { checkSupabaseConnection } from "../../config/supabase";
+import config from "../../config";
 
 export type DependencyHealthStatus = "ok" | "failed" | "skipped";
 

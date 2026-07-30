@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import config from "../config";
-import { supabase } from "../config/supabase";
-import { TopVisitedWord } from "../interfaces/kbbi.interface";
-import { upstreamUnavailableError } from "../lib/api-error";
-import logger from "../lib/logger";
+import config from "../../config";
+import { supabase } from "../../config/supabase";
+import { upstreamUnavailableError } from "../../lib/api-error";
+import logger from "../../lib/logger";
+import type { TopVisitedWord } from "./word-visit.types";
 
 const WORD_VISITS_TABLE = "word_visits";
 const TOP_WORD_VISITS_VIEW = "top_word_visits";

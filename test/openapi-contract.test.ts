@@ -6,15 +6,15 @@ import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/app";
 import { AppDependencies } from "../src/app-dependencies";
-import HealthController from "../src/controllers/health.controller";
-import IndonesianFigureController from "../src/controllers/indonesian-figure.controller";
-import KbbiController from "../src/controllers/kbbi.controller";
-import ProverbController from "../src/controllers/proverb.controller";
-import WordController from "../src/controllers/word.controller";
+import HealthController from "../src/features/health/health.controller";
+import IndonesianFigureController from "../src/features/figures/indonesian-figure.controller";
+import KbbiController from "../src/features/kbbi/kbbi.controller";
+import ProverbController from "../src/features/proverbs/proverb.controller";
+import WordController from "../src/features/word-visits/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
 import { createRateLimiter } from "../src/middlewares/rate-limit.middleware";
-import { HealthService } from "../src/services/health.service";
+import { HealthService } from "../src/features/health/health.service";
 
 type OpenApiResponse = {
   content?: {

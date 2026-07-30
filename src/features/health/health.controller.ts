@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { ApiResponse } from "../interfaces/kbbi.interface";
-import { API_ERROR_CODES } from "../lib/api-error";
-import { getRequestId } from "../lib/request-id";
-import { HealthService, LivenessHealth, ReadinessHealth } from "../services/health.service";
+import { API_ERROR_CODES } from "../../lib/api-error";
+import type { ApiResponse } from "../../lib/api-response.types";
+import { getRequestId } from "../../lib/request-id";
+import { HealthService, LivenessHealth, ReadinessHealth } from "./health.service";
 
 interface SupabaseHealth {
   connected: boolean;

@@ -119,5 +119,5 @@ async function loadService(getScraperHtml: (url: string) => Promise<string>) {
     isHttpNotFound: () => false,
   }));
 
-  return await import("../src/services/proverb.service");
+  return await import("../src/features/proverbs/proverb.service");
 }

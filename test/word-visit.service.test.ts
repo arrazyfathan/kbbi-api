@@ -6,7 +6,7 @@ import {
   normalizeTopWordsLimit,
   normalizeWord,
   WordVisitService,
-} from "../src/services/word-visit.service";
+} from "../src/features/word-visits/word-visit.service";
 
 describe("WordVisitService", () => {
   it("normalizes words and hashes visitor identifiers", () => {

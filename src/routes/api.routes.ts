@@ -1,8 +1,11 @@
 import { Router, Request, Response } from "express";
 import type { AppControllers } from "../app-dependencies";
 import config from "../config";
-import { asyncHandler } from "../lib/async-handler";
-import { scraperRateLimiter } from "../middlewares/rate-limit.middleware";
+import { createFigureRouter } from "../features/figures/figure.routes";
+import { createHealthRouter } from "../features/health/health.routes";
+import { createKbbiRouter } from "../features/kbbi/kbbi.routes";
+import { createProverbRouter } from "../features/proverbs/proverb.routes";
+import { createWordVisitRouter } from "../features/word-visits/word-visit.routes";
 
 export function createApiRouter(controllers: AppControllers): Router {
   const router = Router();
@@ -39,17 +42,11 @@ export function createApiRouter(controllers: AppControllers): Router {
     });
   });
 
-  router.get("/health/live", asyncHandler(controllers.healthController.live));
-  router.get("/health/ready", asyncHandler(controllers.healthController.ready));
-  router.get("/health/supabase", asyncHandler(controllers.healthController.supabase));
-  router.get("/search/:word", scraperRateLimiter, asyncHandler(controllers.kbbiController.search));
-  router.get("/words/top", asyncHandler(controllers.wordController.topVisited));
-  router.get("/proverb", asyncHandler(controllers.proverbController.list));
-  router.get("/proverb/search", scraperRateLimiter, asyncHandler(controllers.proverbController.search));
-  router.get("/proverb/:slug", asyncHandler(controllers.proverbController.detail));
-  router.get("/figure", asyncHandler(controllers.indonesianFigureController.list));
-  router.get("/figure/search", scraperRateLimiter, asyncHandler(controllers.indonesianFigureController.search));
-  router.get("/figure/:slug", asyncHandler(controllers.indonesianFigureController.detail));
+  router.use(createHealthRouter(controllers.healthController));
+  router.use(createKbbiRouter(controllers.kbbiController));
+  router.use(createWordVisitRouter(controllers.wordController));
+  router.use(createProverbRouter(controllers.proverbController));
+  router.use(createFigureRouter(controllers.indonesianFigureController));
 
   return router;
 }

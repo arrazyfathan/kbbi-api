@@ -13,7 +13,7 @@ describe("HealthService", () => {
     }));
 
     const checkSupabase = vi.fn();
-    const { HealthService } = await import("../src/services/health.service");
+    const { HealthService } = await import("../src/features/health/health.service");
     const service = new HealthService(checkSupabase);
 
     await expect(service.ready()).resolves.toEqual({
@@ -43,7 +43,7 @@ describe("HealthService", () => {
       status: 200,
       statusText: "OK",
     }));
-    const { HealthService } = await import("../src/services/health.service");
+    const { HealthService } = await import("../src/features/health/health.service");
     const service = new HealthService(checkSupabase);
 
     await expect(service.ready()).resolves.toEqual({
@@ -76,7 +76,7 @@ describe("HealthService", () => {
       statusText: "Service Unavailable",
       error: "unavailable",
     }));
-    const { HealthService } = await import("../src/services/health.service");
+    const { HealthService } = await import("../src/features/health/health.service");
     const service = new HealthService(checkSupabase);
 
     await expect(service.ready()).resolves.toEqual({

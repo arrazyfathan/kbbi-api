@@ -30,7 +30,7 @@ describe("KbbiService", () => {
       isHttpNotFound: () => false,
     }));
 
-    const { KbbiService } = await import("../src/services/kbbi.service");
+    const { KbbiService } = await import("../src/features/kbbi/kbbi.service");
     const service = new KbbiService();
 
     await service.search("ajar");

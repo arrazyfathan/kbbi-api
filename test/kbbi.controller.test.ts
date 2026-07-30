@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import KbbiController from "../src/controllers/kbbi.controller";
+import KbbiController from "../src/features/kbbi/kbbi.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 
 describe("KbbiController.search", () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import WordController from "../src/controllers/word.controller";
+import WordController from "../src/features/word-visits/word.controller";
 
 describe("WordController.topVisited", () => {
   let wordVisitService: { getTopVisitedWords: ReturnType<typeof vi.fn> };

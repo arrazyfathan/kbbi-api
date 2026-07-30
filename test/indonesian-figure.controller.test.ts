@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import IndonesianFigureController from "../src/controllers/indonesian-figure.controller";
+import IndonesianFigureController from "../src/features/figures/indonesian-figure.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 
 describe("IndonesianFigureController", () => {
