@@ -1,6 +1,23 @@
 /node_modules
-.data
+
+# Environment and local data
 .env
-/dist
+.env.*
+!.env.example
+.data
 .dbexport
+
+# Build output
+/dist
+
+# Logs and package manager diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor and OS files
 /.idea/
+.vscode/
+.DS_Store
