@@ -110,7 +110,7 @@ export type Config = {
 
 const config: Config = {
   port: parsedEnv.PORT,
-  kbbiUrl: "https://kbbi.kemendikdasmen.go.id/entri",
+  kbbiUrl: "https://kbbi.web.id",
   wikiquoteProverbUrl: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
   wikiquoteIndonesianFigureUrl: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
   baseUrl: parsedEnv.BASE_URL,

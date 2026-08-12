@@ -34,6 +34,7 @@ describe("config", () => {
 
     expect(config.port).toBe(3000);
     expect(config.baseUrl).toBe("http://localhost:3000");
+    expect(config.kbbiUrl).toBe("https://kbbi.web.id");
     expect(config.isSupabaseConfigured).toBe(false);
     expect(config.supabaseUrl).toBeUndefined();
     expect(config.supabaseKey).toBeUndefined();

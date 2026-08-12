@@ -19,7 +19,7 @@ describe("KbbiService", () => {
 
     vi.doMock("../src/config", () => ({
       default: {
-        kbbiUrl: "https://kbbi.example.test/entri",
+        kbbiUrl: "https://kbbi.example.test",
         upstream: {
           kbbiFetchTimeoutMs: 45000,
         },
@@ -35,8 +35,12 @@ describe("KbbiService", () => {
 
     await service.search("ajar");
 
-    expect(getScraperHtml).toHaveBeenCalledWith("https://kbbi.example.test/entri/ajar", {
+    expect(getScraperHtml).toHaveBeenCalledWith("https://kbbi.example.test/ajar", {
       timeoutMs: 45000,
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "id-ID,id;q=0.9",
+      },
       upstream: "kbbi",
     });
   });

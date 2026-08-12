@@ -16,26 +16,26 @@ function fixture(name: string): string {
 }
 
 describe("KBBI parser fixtures", () => {
-  it("parses a word page with multiple entries, definitions, and word classes", () => {
+  it("parses direct lookup records with multiple entries, definitions, and word classes", () => {
     expect(parseKbbiHtml(fixture("kbbi-word.html"))).toEqual([
       {
-        headword: "ajar",
+        headword: "a.jar /ajar/",
         definitions: [
           {
-            wordClass: "v[verba]",
-            description: "petunjuk yang diberikan kepada orang supaya diketahui",
+            wordClass: "v[Verba] n[Nomina]",
+            description: "petunjuk yang diberikan kepada orang supaya diketahui;",
           },
           {
-            wordClass: "n[nomina]",
-            description: "segala sesuatu yang diajarkan",
+            wordClass: "v[Verba] n[Nomina]",
+            description: "segala sesuatu yang diajarkan;",
           },
         ],
       },
       {
-        headword: "mengajar",
+        headword: "meng.a.jar",
         definitions: [
           {
-            wordClass: "v[verba]",
+            wordClass: "v[Verba]",
             description: "memberi pelajaran",
           },
         ],
@@ -46,6 +46,40 @@ describe("KBBI parser fixtures", () => {
   it("returns null for empty or not-found-style pages", () => {
     expect(parseKbbiHtml(fixture("kbbi-empty.html"))).toBeNull();
     expect(parseKbbiHtml(fixture("malformed.html"))).toBeNull();
+  });
+
+  it("does not mistake the page's client-side not-found template for a failed lookup", () => {
+    expect(
+      parseKbbiHtml(`
+        <div id="d1">de&#183;mo&#183;kra&#183;si</div>
+        <script type="application/json" id="jsdata">[{"x":1,"d":"<b>de&#183;mo&#183;kra&#183;si</b> <em>n Pol</em> pemerintahan rakyat"}]</script>
+        <script>const notFoundTemplate = "Maaf, tidak ditemukan kata yang dicari";</script>
+      `),
+    ).toEqual([
+      {
+        headword: "de.mo.kra.si",
+        definitions: [
+          {
+            wordClass: "n[Nomina] Pol[Politik dan Pemerintahan]",
+            description: "pemerintahan rakyat",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("finds an exact derived word from related records when the direct lookup is absent", () => {
+    expect(
+      parseKbbiHtml(
+        `<script type="application/json" id="jsdata">[{"x":5,"d":"<b>li&#183;mas</b> <em>n</em> bentuk atap<br/><br/><b>li&#183;mas&#183;an</b> <em>v</em> berbentuk limas"}]</script>`,
+        "limasan",
+      ),
+    ).toEqual([
+      {
+        headword: "li.mas.an",
+        definitions: [{ wordClass: "v[Verba]", description: "berbentuk limas" }],
+      },
+    ]);
   });
 });
 

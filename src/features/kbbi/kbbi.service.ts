@@ -12,7 +12,7 @@ export class KbbiService {
   async search(word: string): Promise<Entry[] | null> {
     try {
       const html = await this.fetchHtml(word);
-      return this.parseHtml(html);
+      return this.parseHtml(html, word);
     } catch (error: any) {
       if (isHttpNotFound(error)) {
         return null;
@@ -24,11 +24,15 @@ export class KbbiService {
   private async fetchHtml(word: string): Promise<string> {
     return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`, {
       timeoutMs: config.upstream.kbbiFetchTimeoutMs,
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "id-ID,id;q=0.9",
+      },
       upstream: "kbbi",
     });
   }
 
-  private parseHtml(html: string): Entry[] | null {
-    return parseKbbiHtml(html);
+  private parseHtml(html: string, word: string): Entry[] | null {
+    return parseKbbiHtml(html, word);
   }
 }
