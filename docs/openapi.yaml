@@ -279,6 +279,110 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /translate/{word}:
+    get:
+      tags:
+        - Words
+      summary: Translate the meanings of a KBBI word.
+      description: Looks up a word in KBBI and translates every meaning from Indonesian to the requested target language using the Google Translate scraper.
+      operationId: translateWord
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/WordPath"
+        - $ref: "#/components/parameters/TranslateToQuery"
+      responses:
+        "200":
+          description: KBBI word with translated meanings payload.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TranslateResult"
+              examples:
+                found:
+                  value:
+                    success: true
+                    message: Translation successful
+                    data:
+                      word: demokrasi
+                      from: id
+                      to: en
+                      entries:
+                        - headword: de.mo.kra.si /démokrasi/
+                          definitions:
+                            - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
+                              description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
+                              translation: "(form or system) of government in which all the people participate in governing through their representatives; people's government"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/WordNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/translate/{word}:
+    get:
+      tags:
+        - Words
+      summary: Translate the meanings of a KBBI word.
+      description: Looks up a word in KBBI and translates every meaning from Indonesian to the requested target language using the Google Translate scraper.
+      operationId: translateWordV1
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+        - $ref: "#/components/parameters/WordPath"
+        - $ref: "#/components/parameters/TranslateToQuery"
+      responses:
+        "200":
+          description: KBBI word with translated meanings payload.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    required:
+                      - data
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TranslateResult"
+              examples:
+                found:
+                  value:
+                    success: true
+                    message: Translation successful
+                    data:
+                      word: demokrasi
+                      from: id
+                      to: en
+                      entries:
+                        - headword: de.mo.kra.si /démokrasi/
+                          definitions:
+                            - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
+                              description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
+                              translation: "(form or system) of government in which all the people participate in governing through their representatives; people's government"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/WordNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
   /words/top:
     get:
       tags:
@@ -890,6 +994,15 @@ components:
         type: string
         minLength: 1
       example: anonymous-client-id
+    TranslateToQuery:
+      name: to
+      in: query
+      required: false
+      description: Target ISO 639-1/639-2 language code. Defaults to `en`.
+      schema:
+        type: string
+        default: en
+      example: en
     TopWordsLimit:
       name: limit
       in: query
@@ -1278,6 +1391,50 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Entry"
+    TranslatedDefinition:
+      description: One KBBI definition entry with its Google Translate result.
+      allOf:
+        - $ref: "#/components/schemas/Definition"
+        - type: object
+          required:
+            - translation
+          properties:
+            translation:
+              type: string
+    TranslatedEntry:
+      description: KBBI headword and its definitions with translated meanings.
+      type: object
+      required:
+        - headword
+        - definitions
+      properties:
+        headword:
+          type: string
+        definitions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranslatedDefinition"
+    TranslateResult:
+      description: Data returned when translating a KBBI word's meanings.
+      type: object
+      required:
+        - word
+        - from
+        - to
+        - entries
+      properties:
+        word:
+          type: string
+        from:
+          type: string
+          description: Source ISO language code.
+        to:
+          type: string
+          description: Target ISO language code.
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranslatedEntry"
     TopVisitedWord:
       description: One ranked word visit-count item.
       type: object

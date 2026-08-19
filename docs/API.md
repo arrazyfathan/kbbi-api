@@ -74,7 +74,8 @@ Returns basic information about the API.
         "/api/v1/proverb/[slug]",
         "/api/v1/figure",
         "/api/v1/figure/search",
-        "/api/v1/figure/[slug]"
+        "/api/v1/figure/[slug]",
+        "/api/v1/translate/[word]"
       ],
       "examples": [
         "http://localhost:3000/api/v1/search/demokrasi",
@@ -84,7 +85,8 @@ Returns basic information about the API.
         "http://localhost:3000/api/v1/proverb/Abu_saja_tak_hinggap",
         "http://localhost:3000/api/v1/figure?page=1&limit=10",
         "http://localhost:3000/api/v1/figure/search?q=soekarno",
-        "http://localhost:3000/api/v1/figure/Soekarno"
+        "http://localhost:3000/api/v1/figure/Soekarno",
+        "http://localhost:3000/api/v1/translate/demokrasi"
       ]
     }
     ```
@@ -392,3 +394,54 @@ Returns one Indonesian figure from a Wikiquote slug.
       "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
+
+### 10. Translate Word Meanings
+
+Looks up a word in KBBI and translates every meaning from Indonesian (`id`) to a target language using the Google Translate scraper. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
+
+- **URL**: `/api/v1/translate/:word`
+- **Method**: `GET`
+- **URL Params**:
+  - `word` (Required): The word whose meanings should be translated.
+- **Query Params**:
+  - `to` (Optional): Target ISO 639-1/639-2 language code. Defaults to `en`.
+- **Example**: `/api/v1/translate/demokrasi?to=en`
+- **Success Response**:
+  - **Code**: 200 OK
+  - **Content**:
+    ```json
+    {
+      "success": true,
+      "message": "Translation successful",
+      "data": {
+        "word": "demokrasi",
+        "from": "id",
+        "to": "en",
+        "entries": [
+          {
+            "headword": "de.mo.kra.si /démokrasi/",
+            "definitions": [
+              {
+                "wordClass": "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]",
+                "description": "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat",
+                "translation": "(form or system) of government in which all the people participate in governing through their representatives; people's government"
+              }
+            ]
+          }
+        ]
+      }
+    }
+    ```
+  - Each `definition` gains a `translation` field alongside the original `description`. The `translation` may be an empty string when Google Translate returns no result for that meaning.
+- **Error Responses**:
+  - **404 Not Found**:
+    ```json
+    {
+      "success": false,
+      "message": "Word not found",
+      "code": "NOT_FOUND",
+      "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
+    }
+    ```
+  - **502 Bad Gateway**: Returned when the Google Translate scraper is unavailable.
+  - **504 Gateway Timeout**: Returned when the Google Translate scraper times out.

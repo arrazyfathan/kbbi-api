@@ -5,6 +5,7 @@ import { createFigureRouter } from "../features/figures/figure.routes";
 import { createHealthRouter } from "../features/health/health.routes";
 import { createKbbiRouter } from "../features/kbbi/kbbi.routes";
 import { createProverbRouter } from "../features/proverbs/proverb.routes";
+import { createTranslateRouter } from "../features/translate/translate.routes";
 import { createWordVisitRouter } from "../features/word-visits/word-visit.routes";
 
 export function createApiRouter(controllers: AppControllers): Router {
@@ -25,6 +26,8 @@ export function createApiRouter(controllers: AppControllers): Router {
         "/api/v1/figure",
         "/api/v1/figure/search",
         "/api/v1/figure/[slug]",
+        "/translate/[word]",
+        "/api/v1/translate/[word]",
       ],
       examples: [
         `${config.baseUrl}/health/live`,
@@ -38,6 +41,7 @@ export function createApiRouter(controllers: AppControllers): Router {
         `${config.baseUrl}/api/v1/figure?page=1&limit=10`,
         `${config.baseUrl}/api/v1/figure/search?q=soekarno`,
         `${config.baseUrl}/api/v1/figure/Soekarno`,
+        `${config.baseUrl}/api/v1/translate/demokrasi`,
       ],
     });
   });
@@ -56,6 +60,7 @@ function createDomainRouter(controllers: AppControllers): Router {
   router.use(createWordVisitRouter(controllers.wordController));
   router.use(createProverbRouter(controllers.proverbController));
   router.use(createFigureRouter(controllers.indonesianFigureController));
+  router.use(createTranslateRouter(controllers.translateController));
 
   return router;
 }

@@ -13,6 +13,9 @@ const DEFAULT_SCRAPER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_SCRAPER_RATE_LIMIT_MAX = 30;
 const DEFAULT_WIKIQUOTE_CACHE_TTL_MS = 60 * 60 * 1000;
 const DEFAULT_KBBI_FETCH_TIMEOUT_MS = 45_000;
+const DEFAULT_GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single";
+const DEFAULT_GOOGLE_TRANSLATE_TIMEOUT_MS = 10_000;
+const DEFAULT_TRANSLATE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -48,6 +51,12 @@ const envSchema = z
     RATE_LIMIT_SCRAPER_MAX: positiveIntegerEnv("RATE_LIMIT_SCRAPER_MAX", DEFAULT_SCRAPER_RATE_LIMIT_MAX),
     WIKIQUOTE_CACHE_TTL_MS: positiveIntegerEnv("WIKIQUOTE_CACHE_TTL_MS", DEFAULT_WIKIQUOTE_CACHE_TTL_MS),
     KBBI_FETCH_TIMEOUT_MS: positiveIntegerEnv("KBBI_FETCH_TIMEOUT_MS", DEFAULT_KBBI_FETCH_TIMEOUT_MS),
+    GOOGLE_TRANSLATE_URL: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.string().trim().url("GOOGLE_TRANSLATE_URL must be a valid URL").default(DEFAULT_GOOGLE_TRANSLATE_URL),
+    ),
+    GOOGLE_TRANSLATE_TIMEOUT_MS: positiveIntegerEnv("GOOGLE_TRANSLATE_TIMEOUT_MS", DEFAULT_GOOGLE_TRANSLATE_TIMEOUT_MS),
+    TRANSLATE_CACHE_TTL_MS: positiveIntegerEnv("TRANSLATE_CACHE_TTL_MS", DEFAULT_TRANSLATE_CACHE_TTL_MS),
     NODE_ENV: optionalTrimmedString,
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
     SUPABASE_ANON_KEY: optionalTrimmedString,
@@ -83,6 +92,7 @@ export type Config = {
   kbbiUrl: string;
   wikiquoteProverbUrl: string;
   wikiquoteIndonesianFigureUrl: string;
+  googleTranslateUrl: string;
   baseUrl: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
@@ -102,9 +112,11 @@ export type Config = {
   };
   cache: {
     wikiquoteTtlMs: number;
+    translateTtlMs: number;
   };
   upstream: {
     kbbiFetchTimeoutMs: number;
+    googleTranslateTimeoutMs: number;
   };
 };
 
@@ -113,6 +125,7 @@ const config: Config = {
   kbbiUrl: "https://kbbi.web.id",
   wikiquoteProverbUrl: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
   wikiquoteIndonesianFigureUrl: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
+  googleTranslateUrl: parsedEnv.GOOGLE_TRANSLATE_URL,
   baseUrl: parsedEnv.BASE_URL,
   supabaseUrl: parsedEnv.SUPABASE_URL,
   supabaseAnonKey: parsedEnv.SUPABASE_ANON_KEY,
@@ -132,9 +145,11 @@ const config: Config = {
   },
   cache: {
     wikiquoteTtlMs: parsedEnv.WIKIQUOTE_CACHE_TTL_MS,
+    translateTtlMs: parsedEnv.TRANSLATE_CACHE_TTL_MS,
   },
   upstream: {
     kbbiFetchTimeoutMs: parsedEnv.KBBI_FETCH_TIMEOUT_MS,
+    googleTranslateTimeoutMs: parsedEnv.GOOGLE_TRANSLATE_TIMEOUT_MS,
   },
 };
 

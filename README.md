@@ -29,6 +29,7 @@ curl http://localhost:3000/api/v1/words/top?limit=10
 curl "http://localhost:3000/api/v1/proverb/search?q=air&page=1&limit=5"
 curl "http://localhost:3000/api/v1/figure/search?q=soekarno"
 curl "http://localhost:3000/api/v1/figure/Soekarno"
+curl "http://localhost:3000/api/v1/translate/demokrasi"
 ```
 
 Domain endpoints are versioned under `/api/v1`. Legacy root-level domain routes remain available temporarily for backward compatibility during migration.
@@ -56,6 +57,9 @@ RATE_LIMIT_SCRAPER_WINDOW_MS=900000
 RATE_LIMIT_SCRAPER_MAX=30
 WIKIQUOTE_CACHE_TTL_MS=3600000
 KBBI_FETCH_TIMEOUT_MS=45000
+GOOGLE_TRANSLATE_URL=https://translate.googleapis.com/translate_a/single
+GOOGLE_TRANSLATE_TIMEOUT_MS=10000
+TRANSLATE_CACHE_TTL_MS=3600000
 # Required in production. Use a long random server-only secret for visitor ID hashing.
 VISITOR_HASH_SALT=replace-with-random-secret
 
@@ -77,6 +81,9 @@ SUPABASE_ANON_KEY=your-anon-key
 | `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                |
 | `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.  |
 | `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).   |
+| `GOOGLE_TRANSLATE_URL`         | No                 | Valid URL of the Google Translate scraper endpoint. Defaults to the unofficial `translate_a/single` endpoint.     |
+| `GOOGLE_TRANSLATE_TIMEOUT_MS`  | No                 | Positive integer timeout for each Google Translate request in milliseconds. Defaults to `10000` (`10` seconds).   |
+| `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                   |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
@@ -84,7 +91,7 @@ SUPABASE_ANON_KEY=your-anon-key
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
 
-Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. The cache is process-local, resets on restart, and is not shared across multiple deployed instances.
+Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
 
 ## Installation
 
@@ -198,6 +205,7 @@ The API applies a loose global limit to all routes and a stricter limit to scrap
 
 ```text
 GET /api/v1/search/:word
+GET /api/v1/translate/:word
 GET /api/v1/proverb/search
 GET /api/v1/figure/search
 ```

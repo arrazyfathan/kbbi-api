@@ -9,6 +9,9 @@ const CONFIG_ENV_KEYS = [
   "RATE_LIMIT_SCRAPER_MAX",
   "WIKIQUOTE_CACHE_TTL_MS",
   "KBBI_FETCH_TIMEOUT_MS",
+  "GOOGLE_TRANSLATE_URL",
+  "GOOGLE_TRANSLATE_TIMEOUT_MS",
+  "TRANSLATE_CACHE_TTL_MS",
   "NODE_ENV",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
@@ -50,10 +53,13 @@ describe("config", () => {
     });
     expect(config.cache).toEqual({
       wikiquoteTtlMs: 3600000,
+      translateTtlMs: 3600000,
     });
     expect(config.upstream).toEqual({
       kbbiFetchTimeoutMs: 45000,
+      googleTranslateTimeoutMs: 10000,
     });
+    expect(config.googleTranslateUrl).toBe("https://translate.googleapis.com/translate_a/single");
   });
 
   it("parses valid env values and prefers the service role key", async () => {
@@ -65,6 +71,9 @@ describe("config", () => {
     vi.stubEnv("RATE_LIMIT_SCRAPER_MAX", "10");
     vi.stubEnv("WIKIQUOTE_CACHE_TTL_MS", "120000");
     vi.stubEnv("KBBI_FETCH_TIMEOUT_MS", "45000");
+    vi.stubEnv("GOOGLE_TRANSLATE_URL", "https://translate.googleapis.com/translate_a/single");
+    vi.stubEnv("GOOGLE_TRANSLATE_TIMEOUT_MS", "15000");
+    vi.stubEnv("TRANSLATE_CACHE_TTL_MS", "60000");
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("SUPABASE_ANON_KEY", "anon-key");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
@@ -92,10 +101,13 @@ describe("config", () => {
     });
     expect(config.cache).toEqual({
       wikiquoteTtlMs: 120000,
+      translateTtlMs: 60000,
     });
     expect(config.upstream).toEqual({
       kbbiFetchTimeoutMs: 45000,
+      googleTranslateTimeoutMs: 15000,
     });
+    expect(config.googleTranslateUrl).toBe("https://translate.googleapis.com/translate_a/single");
   });
 
   it("allows fully missing Supabase config", async () => {

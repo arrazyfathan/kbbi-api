@@ -6,6 +6,7 @@ import HealthController from "../src/features/health/health.controller";
 import IndonesianFigureController from "../src/features/figures/indonesian-figure.controller";
 import KbbiController from "../src/features/kbbi/kbbi.controller";
 import ProverbController from "../src/features/proverbs/proverb.controller";
+import TranslateController from "../src/features/translate/translate.controller";
 import WordController from "../src/features/word-visits/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
@@ -206,6 +207,20 @@ describe("Express app integration", () => {
     expect(response.headers["x-request-id"]).toBe("client-request-1");
   });
 
+  it("translates a word through the real route and middleware stack", async () => {
+    testServices.translateService.translate.mockResolvedValueOnce(createTranslateResult());
+
+    const response = await request(createApp()).get("/translate/Demokrasi?to=en");
+
+    expect(response.status).toBe(200);
+    expect(testServices.translateService.translate).toHaveBeenCalledWith("Demokrasi", "en");
+    expect(response.body).toEqual({
+      success: true,
+      message: "Translation successful",
+      data: createTranslateResult(),
+    });
+  });
+
   it("returns top visited words through HTTP", async () => {
     testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([
       { word: "demokrasi", visitorCount: 12 },
@@ -257,6 +272,7 @@ describe("Express app integration", () => {
       description: "Presiden pertama Republik Indonesia",
       quotes: ["Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"],
     });
+    testServices.translateService.translate.mockResolvedValueOnce(createTranslateResult());
 
     const app = createApp();
 
@@ -268,6 +284,7 @@ describe("Express app integration", () => {
     await expectOk(request(app).get("/api/v1/figure?page=1&limit=10"));
     await expectOk(request(app).get("/api/v1/figure/search?q=soekarno"));
     await expectOk(request(app).get("/api/v1/figure/Soekarno"));
+    await expectOk(request(app).get("/api/v1/translate/Demokrasi"));
 
     expect(testServices.kbbiService.search).toHaveBeenCalledWith("Demokrasi");
     expect(testServices.wordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "client-1");
@@ -280,6 +297,7 @@ describe("Express app integration", () => {
       includeDetails: false,
     });
     expect(testServices.indonesianFigureService.detail).toHaveBeenCalledWith("Soekarno");
+    expect(testServices.translateService.translate).toHaveBeenCalledWith("Demokrasi", "en");
   });
 
   it("returns validation errors without calling the external-backed service", async () => {
@@ -359,6 +377,9 @@ function createTestServices() {
       search: vi.fn(),
       detail: vi.fn(),
     },
+    translateService: {
+      translate: vi.fn(),
+    },
     wordVisitService: {
       getTopVisitedWords: vi.fn(),
       trackWordVisit: vi.fn(),
@@ -394,6 +415,7 @@ function createTestDependencies(services: ReturnType<typeof createTestServices>)
       indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
       kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
       proverbController: new ProverbController(services.proverbService),
+      translateController: new TranslateController(services.translateService),
       wordController: new WordController(services.wordVisitService),
     },
   };
@@ -403,6 +425,22 @@ async function expectOk(requestPromise: Promise<request.Response>) {
   const response = await requestPromise;
 
   expect(response.status).toBe(200);
+}
+
+function createTranslateResult() {
+  return {
+    word: "demokrasi",
+    from: "id",
+    to: "en",
+    entries: [
+      {
+        headword: "demokrasi",
+        definitions: [
+          { wordClass: "n[Nomina]", description: "pemerintahan rakyat", translation: "people's government" },
+        ],
+      },
+    ],
+  };
 }
 
 function createPaginatedProverbResult() {

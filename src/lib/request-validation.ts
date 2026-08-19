@@ -69,6 +69,29 @@ export function parseBooleanQuery(value: unknown, name: string, defaultValue = f
   return parsed.data === "true";
 }
 
+const isoLanguageCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z]{2,3}(-[A-Z0-9]{2,3})?$/i);
+
+export function parseOptionalLanguageQuery(value: unknown, name = "to", defaultValue = "en"): string {
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  const parsed = isoLanguageCodeSchema.safeParse(value);
+
+  if (!parsed.success) {
+    throw invalidRequest(`Query parameter '${name}' must be an ISO language code`, {
+      field: name,
+      location: "query",
+      reason: "Must be a valid ISO 639-1/639-2 language code",
+    });
+  }
+
+  return parsed.data.toLowerCase();
+}
+
 export function parseWordParam(value: unknown): { word: string; normalizedWord: string } {
   const parsed = requiredStringSchema.safeParse(value);
 

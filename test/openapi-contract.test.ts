@@ -10,6 +10,7 @@ import HealthController from "../src/features/health/health.controller";
 import IndonesianFigureController from "../src/features/figures/indonesian-figure.controller";
 import KbbiController from "../src/features/kbbi/kbbi.controller";
 import ProverbController from "../src/features/proverbs/proverb.controller";
+import TranslateController from "../src/features/translate/translate.controller";
 import WordController from "../src/features/word-visits/word.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
@@ -135,6 +136,19 @@ describe("OpenAPI response contracts", () => {
         },
       ],
     });
+    testServices.translateService.translate.mockResolvedValueOnce({
+      word: "demokrasi",
+      from: "id",
+      to: "en",
+      entries: [
+        {
+          headword: "demokrasi",
+          definitions: [
+            { wordClass: "n[Nomina]", description: "pemerintahan rakyat", translation: "people's government" },
+          ],
+        },
+      ],
+    });
 
     const app = createApp();
 
@@ -156,6 +170,11 @@ describe("OpenAPI response contracts", () => {
     expectResponseToMatchContract(await request(app).get("/search/Demokrasi").set("X-Visitor-Id", "client-1"), {
       method: "get",
       path: "/search/{word}",
+      status: 200,
+    });
+    expectResponseToMatchContract(await request(app).get("/translate/Demokrasi"), {
+      method: "get",
+      path: "/translate/{word}",
       status: 200,
     });
     expectResponseToMatchContract(await request(app).get("/words/top?limit=1"), {
@@ -253,6 +272,9 @@ function createTestServices() {
       search: vi.fn(),
       detail: vi.fn(),
     },
+    translateService: {
+      translate: vi.fn(),
+    },
     wordVisitService: {
       getTopVisitedWords: vi.fn(),
       trackWordVisit: vi.fn(),
@@ -288,6 +310,7 @@ function createTestDependencies(services: ReturnType<typeof createTestServices>)
       indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
       kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
       proverbController: new ProverbController(services.proverbService),
+      translateController: new TranslateController(services.translateService),
       wordController: new WordController(services.wordVisitService),
     },
   };

@@ -18,7 +18,7 @@ type ScraperRequestOptions = {
   retryDelayMs?: number;
   timeoutMs?: number;
   headers?: AxiosRequestConfig["headers"];
-  upstream?: "kbbi" | "wikiquote";
+  upstream?: "kbbi" | "wikiquote" | "googletranslate";
 };
 
 type UpstreamMetadata = {
@@ -233,11 +233,15 @@ function getUrlHost(url: string): string | undefined {
   }
 }
 
-function inferUpstream(url: string): "kbbi" | "wikiquote" | undefined {
+function inferUpstream(url: string): "kbbi" | "wikiquote" | "googletranslate" | undefined {
   const host = getUrlHost(url);
 
   if (!host) {
     return undefined;
+  }
+
+  if (host.includes("translate.googleapis.com")) {
+    return "googletranslate";
   }
 
   if (host.includes("wikiquote.org")) {
