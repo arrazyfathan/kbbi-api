@@ -138,6 +138,7 @@ describe("OpenAPI response contracts", () => {
     });
     testServices.translateService.translate.mockResolvedValueOnce({
       word: "demokrasi",
+      translation: "democracy",
       from: "id",
       to: "en",
       entries: [

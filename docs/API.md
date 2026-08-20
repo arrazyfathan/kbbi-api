@@ -397,7 +397,7 @@ Returns one Indonesian figure from a Wikiquote slug.
 
 ### 10. Translate Word Meanings
 
-Looks up a word in KBBI and translates every meaning from Indonesian (`id`) to a target language using the Google Translate scraper. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
+Looks up a word in KBBI and translates the word itself and every one of its meanings from Indonesian (`id`) to a target language using the Google Translate scraper. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
 
 - **URL**: `/api/v1/translate/:word`
 - **Method**: `GET`
@@ -415,6 +415,7 @@ Looks up a word in KBBI and translates every meaning from Indonesian (`id`) to a
       "message": "Translation successful",
       "data": {
         "word": "demokrasi",
+        "translation": "democracy",
         "from": "id",
         "to": "en",
         "entries": [
@@ -432,7 +433,7 @@ Looks up a word in KBBI and translates every meaning from Indonesian (`id`) to a
       }
     }
     ```
-  - Each `definition` gains a `translation` field alongside the original `description`. The `translation` may be an empty string when Google Translate returns no result for that meaning.
+  - `data.translation` is the word itself translated to the target language. Each `definition` also gains a `translation` field alongside the original `description`. A `translation` may be an empty string when Google Translate returns no result for that text.
 - **Error Responses**:
   - **404 Not Found**:
     ```json

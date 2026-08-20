@@ -16,8 +16,13 @@ describe("TranslateService", () => {
     },
   ];
 
-  it("translates every definition in a single newline batch request and builds the result", async () => {
-    const getScraperHtml = vi.fn(async () => mockGoogleResponse([["people's government", "pemerintahan rakyat"]]));
+  it("translates the word and every definition in a single newline batch request and builds the result", async () => {
+    const getScraperHtml = vi.fn(async () =>
+      mockGoogleResponse([
+        ["democracy", "demokrasi"],
+        ["people's government", "pemerintahan rakyat"],
+      ]),
+    );
     const { TranslateService, kbbiService } = await loadService(getScraperHtml);
     kbbiService.search.mockResolvedValueOnce(kbbiEntries);
     const service = new TranslateService(kbbiService);
@@ -27,11 +32,12 @@ describe("TranslateService", () => {
     expect(kbbiService.search).toHaveBeenCalledWith("demokrasi");
     expect(getScraperHtml).toHaveBeenCalledTimes(1);
     expect(getScraperHtml).toHaveBeenCalledWith(
-      "https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=pemerintahan+rakyat",
+      "https://translate.googleapis.com/translate_a/single?client=gtx&sl=id&tl=en&dt=t&q=demokrasi%0Apemerintahan+rakyat",
       { timeoutMs: 10000, upstream: "googletranslate" },
     );
     expect(result).toEqual({
       word: "demokrasi",
+      translation: "democracy",
       from: "id",
       to: "en",
       entries: [
@@ -58,6 +64,7 @@ describe("TranslateService", () => {
     ];
     const getScraperHtml = vi.fn(async () =>
       mockGoogleResponse([
+        ["democracy", "demokrasi"],
         ["A ", "a; "],
         ["B", "b"],
       ]),
@@ -69,12 +76,18 @@ describe("TranslateService", () => {
     const result = await service.translate("demokrasi", "en");
 
     expect(getScraperHtml).toHaveBeenCalledTimes(1);
+    expect(result?.translation).toBe("democracy");
     expect(result?.entries[0].definitions[0].translation).toBe("A B");
   });
 
   it("reuses the cache before TTL expires", async () => {
     let now = 0;
-    const getScraperHtml = vi.fn(async () => mockGoogleResponse([["people's government", "pemerintahan rakyat"]]));
+    const getScraperHtml = vi.fn(async () =>
+      mockGoogleResponse([
+        ["democracy", "demokrasi"],
+        ["people's government", "pemerintahan rakyat"],
+      ]),
+    );
     const { TranslateService, kbbiService } = await loadService(getScraperHtml);
     kbbiService.search.mockResolvedValue(kbbiEntries);
     const service = new TranslateService(kbbiService, { now: () => now });
@@ -88,8 +101,11 @@ describe("TranslateService", () => {
 
   it("fetches again for a different target language", async () => {
     const getScraperHtml = vi.fn(async (url: string) => {
-      const translated = url.includes("tl=ms") ? "kerajaan rakyat" : "people's government";
-      return mockGoogleResponse([[translated, "pemerintahan rakyat"]]);
+      const isMalay = url.includes("tl=ms");
+      return mockGoogleResponse([
+        [isMalay ? "demokrasi" : "democracy", "demokrasi"],
+        [isMalay ? "kerajaan rakyat" : "people's government", "pemerintahan rakyat"],
+      ]);
     });
     const { TranslateService, kbbiService } = await loadService(getScraperHtml);
     kbbiService.search.mockResolvedValue(kbbiEntries);
@@ -126,7 +142,9 @@ describe("TranslateService", () => {
     const getScraperHtml = vi.fn(async (url: string) =>
       url.includes("%0A")
         ? mockGoogleResponse([["only-one", "pemerintahan rakyat"]])
-        : mockGoogleResponse([["single translation", "irrelevant"]]),
+        : url.includes("q=demokrasi")
+          ? mockGoogleResponse([["democracy", "demokrasi"]])
+          : mockGoogleResponse([["single translation", "irrelevant"]]),
     );
     const { TranslateService, kbbiService } = await loadService(getScraperHtml);
     kbbiService.search.mockResolvedValueOnce(kbbiTwoEntry);
@@ -134,14 +152,15 @@ describe("TranslateService", () => {
 
     const result = await service.translate("demokrasi", "en");
 
-    expect(getScraperHtml).toHaveBeenCalledTimes(3);
+    expect(getScraperHtml).toHaveBeenCalledTimes(4);
+    expect(result?.translation).toBe("democracy");
     expect(result?.entries[0].definitions).toEqual([
       { wordClass: "n[Nomina]", description: "pemerintahan rakyat", translation: "single translation" },
       { wordClass: "n[Nomina]", description: "persamaan hak", translation: "single translation" },
     ]);
   });
 
-  it("joins multiple segments when translating a definition individually", async () => {
+  it("joins multiple segments when translating the word and a definition individually", async () => {
     const getScraperHtml = vi.fn(async (url: string) =>
       url.includes("%0A")
         ? mockGoogleResponse([["only-one", "does not match the description"]])
@@ -156,7 +175,8 @@ describe("TranslateService", () => {
 
     const result = await service.translate("demokrasi", "en");
 
-    expect(getScraperHtml).toHaveBeenCalledTimes(2);
+    expect(getScraperHtml).toHaveBeenCalledTimes(3);
+    expect(result?.translation).toBe("part one part two");
     expect(result?.entries[0].definitions[0].translation).toBe("part one part two");
   });
 

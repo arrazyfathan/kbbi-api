@@ -14,6 +14,7 @@ describe("TranslateController.translate", () => {
   it("returns translated entries with the default target language", async () => {
     translateService.translate.mockResolvedValueOnce({
       word: "demokrasi",
+      translation: "democracy",
       from: "id",
       to: "en",
       entries: [
@@ -37,6 +38,7 @@ describe("TranslateController.translate", () => {
       message: "Translation successful",
       data: {
         word: "demokrasi",
+        translation: "democracy",
         from: "id",
         to: "en",
         entries: [

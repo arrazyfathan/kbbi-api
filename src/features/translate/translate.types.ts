@@ -11,6 +11,7 @@ export interface TranslatedEntry {
 
 export interface TranslateResult {
   word: string;
+  translation: string;
   from: string;
   to: string;
   entries: TranslatedEntry[];

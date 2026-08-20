@@ -10,6 +10,11 @@ import type { TranslateResult, TranslatedDefinition, TranslatedEntry } from "./t
 
 type Clock = () => number;
 
+interface WordAndDefinitionTranslations {
+  word: string;
+  definitions: string[];
+}
+
 const DEFAULT_SOURCE_LANGUAGE = "id";
 const DEFAULT_TARGET_LANGUAGE = "en";
 const CACHE_KEY_SEPARATOR = ":";
@@ -36,11 +41,11 @@ export class TranslateService {
   }
 
   /**
-   * Translate every KBBI definition of a word from Indonesian to the target
-   * language.
+   * Translate a KBBI word and every one of its definitions from Indonesian to
+   * the target language.
    * @param word The word to translate
    * @param target The target ISO 639-1/639-2 language code
-   * @returns Translated entries or null when the word is not found in KBBI
+   * @returns Translated word and entries or null when the word is not found in KBBI
    */
   async translate(word: string, target = DEFAULT_TARGET_LANGUAGE): Promise<TranslateResult | null> {
     const normalizedWord = normalizeWord(word);
@@ -58,7 +63,7 @@ export class TranslateService {
       return cached;
     }
 
-    const translations = await this.translateAll(entries, target);
+    const translations = await this.translateAll(normalizedWord, entries, target);
     const result = this.buildResult(normalizedWord, target, entries, translations);
 
     this.cache.set(cacheKey, result);
@@ -66,27 +71,28 @@ export class TranslateService {
     return result;
   }
 
-  private async translateAll(entries: Entry[], target: string): Promise<string[]> {
+  private async translateAll(word: string, entries: Entry[], target: string): Promise<WordAndDefinitionTranslations> {
     const descriptions = entries.flatMap((entry) => entry.definitions.map((definition) => definition.description));
+    const texts = [word, ...descriptions];
 
-    if (descriptions.length === 0) {
-      return [];
+    const batched = await this.translateBatch(texts, target);
+
+    if (batched.length === texts.length) {
+      return { word: batched[0] ?? word, definitions: batched.slice(1) };
     }
 
-    const batched = await this.translateBatch(descriptions, target);
-
-    return batched.length === descriptions.length ? batched : this.translateIndividually(descriptions, target);
+    return this.translateIndividually(word, descriptions, target);
   }
 
-  private async translateBatch(descriptions: string[], target: string): Promise<string[]> {
+  private async translateBatch(texts: string[], target: string): Promise<string[]> {
     try {
-      const html = await this.fetchTranslation(target, descriptions.join("\n"));
+      const html = await this.fetchTranslation(target, texts.join("\n"));
       const segments = parseGoogleTranslateResponse(JSON.parse(html));
 
-      return alignSegmentsToDescriptions(segments, descriptions) ?? [];
+      return alignSegmentsToDescriptions(segments, texts) ?? [];
     } catch (error: any) {
       logger.warn(
-        { err: error, event: "google_translate_batch_failed", count: descriptions.length },
+        { err: error, event: "google_translate_batch_failed", count: texts.length },
         "Google Translate batch failed, falling back to per-definition requests",
       );
 
@@ -94,10 +100,14 @@ export class TranslateService {
     }
   }
 
-  private async translateIndividually(descriptions: string[], target: string): Promise<string[]> {
+  private async translateIndividually(
+    word: string,
+    descriptions: string[],
+    target: string,
+  ): Promise<WordAndDefinitionTranslations> {
     const settled = await Promise.allSettled(
-      descriptions.map(async (description) => {
-        const html = await this.fetchTranslation(target, description);
+      [word, ...descriptions].map(async (text) => {
+        const html = await this.fetchTranslation(target, text);
         const segments = parseGoogleTranslateResponse(JSON.parse(html));
         return joinTranslationSegments(segments);
       }),
@@ -109,7 +119,9 @@ export class TranslateService {
       throw failures[0].reason;
     }
 
-    return settled.map((result) => (result.status === "fulfilled" ? result.value : ""));
+    const values = settled.map((result) => (result.status === "fulfilled" ? result.value : ""));
+
+    return { word: values[0] ?? word, definitions: values.slice(1) };
   }
 
   private async fetchTranslation(target: string, text: string): Promise<string> {
@@ -130,12 +142,18 @@ export class TranslateService {
     return url.toString();
   }
 
-  private buildResult(word: string, target: string, entries: Entry[], translations: string[]): TranslateResult {
+  private buildResult(
+    word: string,
+    target: string,
+    entries: Entry[],
+    translations: WordAndDefinitionTranslations,
+  ): TranslateResult {
     return {
       word,
+      translation: translations.word,
       from: DEFAULT_SOURCE_LANGUAGE,
       to: target,
-      entries: this.buildTranslatedEntries(entries, translations),
+      entries: this.buildTranslatedEntries(entries, translations.definitions),
     };
   }
 

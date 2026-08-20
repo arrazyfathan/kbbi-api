@@ -284,7 +284,7 @@ paths:
       tags:
         - Words
       summary: Translate the meanings of a KBBI word.
-      description: Looks up a word in KBBI and translates every meaning from Indonesian to the requested target language using the Google Translate scraper.
+      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language using the Google Translate scraper.
       operationId: translateWord
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -311,6 +311,7 @@ paths:
                     message: Translation successful
                     data:
                       word: demokrasi
+                      translation: democracy
                       from: id
                       to: en
                       entries:
@@ -336,7 +337,7 @@ paths:
       tags:
         - Words
       summary: Translate the meanings of a KBBI word.
-      description: Looks up a word in KBBI and translates every meaning from Indonesian to the requested target language using the Google Translate scraper.
+      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language using the Google Translate scraper.
       operationId: translateWordV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -363,6 +364,7 @@ paths:
                     message: Translation successful
                     data:
                       word: demokrasi
+                      translation: democracy
                       from: id
                       to: en
                       entries:
@@ -1419,12 +1421,16 @@ components:
       type: object
       required:
         - word
+        - translation
         - from
         - to
         - entries
       properties:
         word:
           type: string
+        translation:
+          type: string
+          description: The word itself translated to the target language.
         from:
           type: string
           description: Source ISO language code.
