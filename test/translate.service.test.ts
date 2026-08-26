@@ -40,6 +40,7 @@ describe("TranslateService", () => {
       translation: "democracy",
       from: "id",
       to: "en",
+      provider: "google",
       entries: [
         {
           headword: "demokrasi",
@@ -190,6 +191,41 @@ describe("TranslateService", () => {
 
     await expect(service.translate("demokrasi", "en")).rejects.toThrow("translate.googleapis.com unreachable");
   });
+
+  it("falls back to Lara when every Google Translate request fails", async () => {
+    const getScraperHtml = vi.fn(async () => {
+      throw new Error("translate.googleapis.com unreachable");
+    });
+    const laraProvider = {
+      translate: vi.fn(async () => ["democracy", "people's government"]),
+    };
+    const { TranslateService, kbbiService } = await loadService(getScraperHtml);
+    kbbiService.search.mockResolvedValueOnce(kbbiEntries);
+    const service = new TranslateService(kbbiService, { laraProvider });
+
+    const result = await service.translate("demokrasi", "en");
+
+    expect(laraProvider.translate).toHaveBeenCalledWith(["demokrasi", "pemerintahan rakyat"], "en");
+    expect(result?.translation).toBe("democracy");
+    expect(result?.provider).toBe("lara");
+    expect(result?.entries[0].definitions[0].translation).toBe("people's government");
+  });
+
+  it("propagates the Lara error when Google and Lara both fail", async () => {
+    const getScraperHtml = vi.fn(async () => {
+      throw new Error("translate.googleapis.com unreachable");
+    });
+    const laraProvider = {
+      translate: vi.fn(async () => {
+        throw new Error("Lara quota exceeded");
+      }),
+    };
+    const { TranslateService, kbbiService } = await loadService(getScraperHtml);
+    kbbiService.search.mockResolvedValueOnce(kbbiEntries);
+    const service = new TranslateService(kbbiService, { laraProvider });
+
+    await expect(service.translate("demokrasi", "en")).rejects.toThrow("Lara quota exceeded");
+  });
 });
 
 async function loadService(getScraperHtml: (url: string) => Promise<string>) {
@@ -198,13 +234,15 @@ async function loadService(getScraperHtml: (url: string) => Promise<string>) {
   vi.doMock("../src/config", () => ({
     default: {
       googleTranslateUrl: "https://translate.googleapis.com/translate_a/single",
-      upstream: { googleTranslateTimeoutMs: 10000 },
+      isLaraConfigured: false,
+      upstream: { googleTranslateTimeoutMs: 10000, laraTranslateTimeoutMs: 10000 },
       cache: { translateTtlMs: 3600000 },
     },
   }));
   vi.doMock("../src/lib/http-client", () => ({
     getScraperHtml,
     isHttpNotFound: () => false,
+    isUpstreamHttpError: () => false,
   }));
 
   const { TranslateService } = await import("../src/features/translate/translate.service");

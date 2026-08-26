@@ -17,6 +17,7 @@ describe("TranslateController.translate", () => {
       translation: "democracy",
       from: "id",
       to: "en",
+      provider: "google",
       entries: [
         {
           headword: "demokrasi",
@@ -41,6 +42,7 @@ describe("TranslateController.translate", () => {
         translation: "democracy",
         from: "id",
         to: "en",
+        provider: "google",
         entries: [
           {
             headword: "demokrasi",
@@ -58,6 +60,7 @@ describe("TranslateController.translate", () => {
       word: "demokrasi",
       from: "id",
       to: "ms",
+      provider: "google",
       entries: [],
     });
 

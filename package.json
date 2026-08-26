@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.110.5",
+    "@translated/lara": "^1.13.2",
     "axios": "^1.18.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",

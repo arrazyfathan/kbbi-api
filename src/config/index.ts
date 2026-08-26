@@ -15,6 +15,7 @@ const DEFAULT_WIKIQUOTE_CACHE_TTL_MS = 60 * 60 * 1000;
 const DEFAULT_KBBI_FETCH_TIMEOUT_MS = 45_000;
 const DEFAULT_GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single";
 const DEFAULT_GOOGLE_TRANSLATE_TIMEOUT_MS = 10_000;
+const DEFAULT_LARA_TRANSLATE_TIMEOUT_MS = 10_000;
 const DEFAULT_TRANSLATE_CACHE_TTL_MS = 60 * 60 * 1000;
 
 const optionalTrimmedString = z.preprocess(
@@ -56,6 +57,9 @@ const envSchema = z
       z.string().trim().url("GOOGLE_TRANSLATE_URL must be a valid URL").default(DEFAULT_GOOGLE_TRANSLATE_URL),
     ),
     GOOGLE_TRANSLATE_TIMEOUT_MS: positiveIntegerEnv("GOOGLE_TRANSLATE_TIMEOUT_MS", DEFAULT_GOOGLE_TRANSLATE_TIMEOUT_MS),
+    LARA_ACCESS_KEY_ID: optionalTrimmedString,
+    LARA_ACCESS_KEY_SECRET: optionalTrimmedString,
+    LARA_TRANSLATE_TIMEOUT_MS: positiveIntegerEnv("LARA_TRANSLATE_TIMEOUT_MS", DEFAULT_LARA_TRANSLATE_TIMEOUT_MS),
     TRANSLATE_CACHE_TTL_MS: positiveIntegerEnv("TRANSLATE_CACHE_TTL_MS", DEFAULT_TRANSLATE_CACHE_TTL_MS),
     NODE_ENV: optionalTrimmedString,
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
@@ -72,6 +76,17 @@ const envSchema = z
         code: "custom",
         message: "Supabase config must include SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
         path: hasSupabaseUrl ? ["SUPABASE_ANON_KEY"] : ["SUPABASE_URL"],
+      });
+    }
+
+    const hasLaraAccessKeyId = Boolean(env.LARA_ACCESS_KEY_ID);
+    const hasLaraAccessKeySecret = Boolean(env.LARA_ACCESS_KEY_SECRET);
+
+    if (hasLaraAccessKeyId !== hasLaraAccessKeySecret) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Lara config must include both LARA_ACCESS_KEY_ID and LARA_ACCESS_KEY_SECRET",
+        path: hasLaraAccessKeyId ? ["LARA_ACCESS_KEY_SECRET"] : ["LARA_ACCESS_KEY_ID"],
       });
     }
 
@@ -93,6 +108,9 @@ export type Config = {
   wikiquoteProverbUrl: string;
   wikiquoteIndonesianFigureUrl: string;
   googleTranslateUrl: string;
+  laraAccessKeyId?: string;
+  laraAccessKeySecret?: string;
+  isLaraConfigured: boolean;
   baseUrl: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
@@ -117,6 +135,7 @@ export type Config = {
   upstream: {
     kbbiFetchTimeoutMs: number;
     googleTranslateTimeoutMs: number;
+    laraTranslateTimeoutMs: number;
   };
 };
 
@@ -126,6 +145,9 @@ const config: Config = {
   wikiquoteProverbUrl: "https://id.wikiquote.org/wiki/Peribahasa_Indonesia",
   wikiquoteIndonesianFigureUrl: "https://id.wikiquote.org/wiki/Kategori:Tokoh_Indonesia",
   googleTranslateUrl: parsedEnv.GOOGLE_TRANSLATE_URL,
+  laraAccessKeyId: parsedEnv.LARA_ACCESS_KEY_ID,
+  laraAccessKeySecret: parsedEnv.LARA_ACCESS_KEY_SECRET,
+  isLaraConfigured: Boolean(parsedEnv.LARA_ACCESS_KEY_ID && parsedEnv.LARA_ACCESS_KEY_SECRET),
   baseUrl: parsedEnv.BASE_URL,
   supabaseUrl: parsedEnv.SUPABASE_URL,
   supabaseAnonKey: parsedEnv.SUPABASE_ANON_KEY,
@@ -150,6 +172,7 @@ const config: Config = {
   upstream: {
     kbbiFetchTimeoutMs: parsedEnv.KBBI_FETCH_TIMEOUT_MS,
     googleTranslateTimeoutMs: parsedEnv.GOOGLE_TRANSLATE_TIMEOUT_MS,
+    laraTranslateTimeoutMs: parsedEnv.LARA_TRANSLATE_TIMEOUT_MS,
   },
 };
 

@@ -11,6 +11,9 @@ const CONFIG_ENV_KEYS = [
   "KBBI_FETCH_TIMEOUT_MS",
   "GOOGLE_TRANSLATE_URL",
   "GOOGLE_TRANSLATE_TIMEOUT_MS",
+  "LARA_ACCESS_KEY_ID",
+  "LARA_ACCESS_KEY_SECRET",
+  "LARA_TRANSLATE_TIMEOUT_MS",
   "TRANSLATE_CACHE_TTL_MS",
   "NODE_ENV",
   "SUPABASE_URL",
@@ -39,6 +42,9 @@ describe("config", () => {
     expect(config.baseUrl).toBe("http://localhost:3000");
     expect(config.kbbiUrl).toBe("https://kbbi.web.id");
     expect(config.isSupabaseConfigured).toBe(false);
+    expect(config.isLaraConfigured).toBe(false);
+    expect(config.laraAccessKeyId).toBeUndefined();
+    expect(config.laraAccessKeySecret).toBeUndefined();
     expect(config.supabaseUrl).toBeUndefined();
     expect(config.supabaseKey).toBeUndefined();
     expect(config.rateLimit).toEqual({
@@ -58,6 +64,7 @@ describe("config", () => {
     expect(config.upstream).toEqual({
       kbbiFetchTimeoutMs: 45000,
       googleTranslateTimeoutMs: 10000,
+      laraTranslateTimeoutMs: 10000,
     });
     expect(config.googleTranslateUrl).toBe("https://translate.googleapis.com/translate_a/single");
   });
@@ -73,6 +80,9 @@ describe("config", () => {
     vi.stubEnv("KBBI_FETCH_TIMEOUT_MS", "45000");
     vi.stubEnv("GOOGLE_TRANSLATE_URL", "https://translate.googleapis.com/translate_a/single");
     vi.stubEnv("GOOGLE_TRANSLATE_TIMEOUT_MS", "15000");
+    vi.stubEnv("LARA_ACCESS_KEY_ID", "lara-key-id");
+    vi.stubEnv("LARA_ACCESS_KEY_SECRET", "lara-key-secret");
+    vi.stubEnv("LARA_TRANSLATE_TIMEOUT_MS", "12000");
     vi.stubEnv("TRANSLATE_CACHE_TTL_MS", "60000");
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("SUPABASE_ANON_KEY", "anon-key");
@@ -88,6 +98,9 @@ describe("config", () => {
     expect(config.supabaseServiceRoleKey).toBe("service-role-key");
     expect(config.supabaseKey).toBe("service-role-key");
     expect(config.isSupabaseConfigured).toBe(true);
+    expect(config.isLaraConfigured).toBe(true);
+    expect(config.laraAccessKeyId).toBe("lara-key-id");
+    expect(config.laraAccessKeySecret).toBe("lara-key-secret");
     expect(config.visitorHashSalt).toBe("salt-value");
     expect(config.rateLimit).toEqual({
       global: {
@@ -106,6 +119,7 @@ describe("config", () => {
     expect(config.upstream).toEqual({
       kbbiFetchTimeoutMs: 45000,
       googleTranslateTimeoutMs: 15000,
+      laraTranslateTimeoutMs: 12000,
     });
     expect(config.googleTranslateUrl).toBe("https://translate.googleapis.com/translate_a/single");
   });
@@ -177,5 +191,12 @@ describe("config", () => {
 
     expect(() => parseEnv({ SUPABASE_URL: "https://project.supabase.co" })).toThrow(/Supabase config/);
     expect(() => parseEnv({ SUPABASE_ANON_KEY: "anon-key" })).toThrow(/Supabase config/);
+  });
+
+  it("rejects partial Lara config", async () => {
+    const { parseEnv } = await import("../src/config");
+
+    expect(() => parseEnv({ LARA_ACCESS_KEY_ID: "lara-key-id" })).toThrow(/Lara config/);
+    expect(() => parseEnv({ LARA_ACCESS_KEY_SECRET: "lara-key-secret" })).toThrow(/Lara config/);
   });
 });

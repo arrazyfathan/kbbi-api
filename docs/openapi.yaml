@@ -284,7 +284,7 @@ paths:
       tags:
         - Words
       summary: Translate the meanings of a KBBI word.
-      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language using the Google Translate scraper.
+      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language, with an optional Lara Translate fallback.
       operationId: translateWord
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -314,6 +314,7 @@ paths:
                       translation: democracy
                       from: id
                       to: en
+                      provider: google
                       entries:
                         - headword: de.mo.kra.si /démokrasi/
                           definitions:
@@ -337,7 +338,7 @@ paths:
       tags:
         - Words
       summary: Translate the meanings of a KBBI word.
-      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language using the Google Translate scraper.
+      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language, with an optional Lara Translate fallback.
       operationId: translateWordV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -367,6 +368,7 @@ paths:
                       translation: democracy
                       from: id
                       to: en
+                      provider: google
                       entries:
                         - headword: de.mo.kra.si /démokrasi/
                           definitions:
@@ -1394,7 +1396,7 @@ components:
           items:
             $ref: "#/components/schemas/Entry"
     TranslatedDefinition:
-      description: One KBBI definition entry with its Google Translate result.
+      description: One KBBI definition entry with its translated result.
       allOf:
         - $ref: "#/components/schemas/Definition"
         - type: object
@@ -1424,6 +1426,7 @@ components:
         - translation
         - from
         - to
+        - provider
         - entries
       properties:
         word:
@@ -1437,6 +1440,12 @@ components:
         to:
           type: string
           description: Target ISO language code.
+        provider:
+          type: string
+          enum:
+            - google
+            - lara
+          description: Translation provider that produced this result.
         entries:
           type: array
           items:

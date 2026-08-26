@@ -397,7 +397,7 @@ Returns one Indonesian figure from a Wikiquote slug.
 
 ### 10. Translate Word Meanings
 
-Looks up a word in KBBI and translates the word itself and every one of its meanings from Indonesian (`id`) to a target language using the Google Translate scraper. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
+Looks up a word in KBBI and translates the word itself and every one of its meanings from Indonesian (`id`) to a target language. Google Translate is used first, with Lara Translate as an optional configured fallback. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
 
 - **URL**: `/api/v1/translate/:word`
 - **Method**: `GET`
@@ -418,6 +418,7 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
         "translation": "democracy",
         "from": "id",
         "to": "en",
+        "provider": "google",
         "entries": [
           {
             "headword": "de.mo.kra.si /démokrasi/",
@@ -433,7 +434,7 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
       }
     }
     ```
-  - `data.translation` is the word itself translated to the target language. Each `definition` also gains a `translation` field alongside the original `description`. A `translation` may be an empty string when Google Translate returns no result for that text.
+  - `data.translation` is the word itself translated to the target language. `data.provider` identifies whether Google (`google`) or Lara (`lara`) produced the result. Each `definition` also gains a `translation` field alongside the original `description`. A `translation` may be an empty string when the translation provider returns no result for that text.
 - **Error Responses**:
   - **404 Not Found**:
     ```json
@@ -444,5 +445,5 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
       "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
-  - **502 Bad Gateway**: Returned when the Google Translate scraper is unavailable.
-  - **504 Gateway Timeout**: Returned when the Google Translate scraper times out.
+  - **502 Bad Gateway**: Returned when all configured translation providers are unavailable.
+  - **504 Gateway Timeout**: Returned when the final configured translation provider times out.

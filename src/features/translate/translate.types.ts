@@ -1,5 +1,7 @@
 import type { Definition } from "../kbbi/kbbi.types";
 
+export type TranslationProvider = "google" | "lara";
+
 export interface TranslatedDefinition extends Definition {
   translation: string;
 }
@@ -14,5 +16,6 @@ export interface TranslateResult {
   translation: string;
   from: string;
   to: string;
+  provider: TranslationProvider;
   entries: TranslatedEntry[];
 }

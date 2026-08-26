@@ -141,6 +141,7 @@ describe("OpenAPI response contracts", () => {
       translation: "democracy",
       from: "id",
       to: "en",
+      provider: "google",
       entries: [
         {
           headword: "demokrasi",

@@ -1,18 +1,21 @@
 import config from "../../config";
-import { getScraperHtml } from "../../lib/http-client";
+import { getScraperHtml, isUpstreamHttpError } from "../../lib/http-client";
 import logger from "../../lib/logger";
 import { TtlCache } from "../../lib/ttl-cache";
 import type { KbbiService } from "../kbbi/kbbi.service";
 import type { Entry } from "../kbbi/kbbi.types";
 import { parseGoogleTranslateResponse } from "./google-translate.parser";
 import type { GoogleTranslateSegment } from "./google-translate.parser";
-import type { TranslateResult, TranslatedDefinition, TranslatedEntry } from "./translate.types";
+import { LaraTranslateClient } from "./lara-translate.client";
+import type { LaraTranslationProvider } from "./lara-translate.client";
+import type { TranslateResult, TranslatedDefinition, TranslatedEntry, TranslationProvider } from "./translate.types";
 
 type Clock = () => number;
 
 interface WordAndDefinitionTranslations {
   word: string;
   definitions: string[];
+  provider: TranslationProvider;
 }
 
 const DEFAULT_SOURCE_LANGUAGE = "id";
@@ -25,15 +28,24 @@ export class TranslateService {
   private readonly timeoutMs: number;
   private readonly cacheTtlMs: number;
   private readonly cache: TtlCache<string, TranslateResult>;
+  private readonly laraProvider?: LaraTranslationProvider;
 
   constructor(
     private readonly kbbiService: Pick<KbbiService, "search">,
-    options: { now?: Clock; sourceUrl?: string; timeoutMs?: number; cacheTtlMs?: number } = {},
+    options: {
+      now?: Clock;
+      sourceUrl?: string;
+      timeoutMs?: number;
+      cacheTtlMs?: number;
+      laraProvider?: LaraTranslationProvider | null;
+    } = {},
   ) {
     this.now = options.now || Date.now;
     this.sourceUrl = options.sourceUrl ?? config.googleTranslateUrl;
     this.timeoutMs = options.timeoutMs ?? config.upstream.googleTranslateTimeoutMs;
     this.cacheTtlMs = options.cacheTtlMs ?? config.cache.translateTtlMs;
+    this.laraProvider =
+      options.laraProvider === undefined ? createConfiguredLaraProvider() : (options.laraProvider ?? undefined);
     this.cache = new TtlCache<string, TranslateResult>({
       ttlMs: this.cacheTtlMs,
       now: () => this.now(),
@@ -75,10 +87,42 @@ export class TranslateService {
     const descriptions = entries.flatMap((entry) => entry.definitions.map((definition) => definition.description));
     const texts = [word, ...descriptions];
 
+    try {
+      return await this.translateWithGoogle(word, descriptions, texts, target);
+    } catch (googleError) {
+      if (!this.laraProvider) {
+        throw googleError;
+      }
+
+      logger.warn(
+        { err: googleError, event: "google_translate_failed", count: texts.length },
+        "Google Translate failed, falling back to Lara Translate",
+      );
+
+      try {
+        const translations = await this.laraProvider.translate(texts, target);
+
+        return { word: translations[0] ?? word, definitions: translations.slice(1), provider: "lara" };
+      } catch (laraError) {
+        logger.warn(
+          { err: laraError, event: "lara_translate_failed", count: texts.length },
+          "Lara Translate fallback failed",
+        );
+        throw laraError;
+      }
+    }
+  }
+
+  private async translateWithGoogle(
+    word: string,
+    descriptions: string[],
+    texts: string[],
+    target: string,
+  ): Promise<WordAndDefinitionTranslations> {
     const batched = await this.translateBatch(texts, target);
 
     if (batched.length === texts.length) {
-      return { word: batched[0] ?? word, definitions: batched.slice(1) };
+      return { word: batched[0] ?? word, definitions: batched.slice(1), provider: "google" };
     }
 
     return this.translateIndividually(word, descriptions, target);
@@ -91,10 +135,18 @@ export class TranslateService {
 
       return alignSegmentsToDescriptions(segments, texts) ?? [];
     } catch (error: any) {
+      const upstreamFailed = isUpstreamHttpError(error);
+
       logger.warn(
         { err: error, event: "google_translate_batch_failed", count: texts.length },
-        "Google Translate batch failed, falling back to per-definition requests",
+        upstreamFailed
+          ? "Google Translate batch request failed"
+          : "Google Translate batch failed, falling back to per-definition requests",
       );
+
+      if (upstreamFailed) {
+        throw error;
+      }
 
       return [];
     }
@@ -121,7 +173,7 @@ export class TranslateService {
 
     const values = settled.map((result) => (result.status === "fulfilled" ? result.value : ""));
 
-    return { word: values[0] ?? word, definitions: values.slice(1) };
+    return { word: values[0] ?? word, definitions: values.slice(1), provider: "google" };
   }
 
   private async fetchTranslation(target: string, text: string): Promise<string> {
@@ -153,6 +205,7 @@ export class TranslateService {
       translation: translations.word,
       from: DEFAULT_SOURCE_LANGUAGE,
       to: target,
+      provider: translations.provider,
       entries: this.buildTranslatedEntries(entries, translations.definitions),
     };
   }
@@ -182,7 +235,7 @@ export class TranslateService {
     logger.info(
       {
         event: "cache_lookup",
-        cacheName: "google_translate",
+        cacheName: "translate",
         cacheKey,
         cacheHit,
         ttlMs: this.cacheTtlMs,
@@ -190,6 +243,18 @@ export class TranslateService {
       cacheHit ? "Translate cache hit" : "Translate cache miss",
     );
   }
+}
+
+function createConfiguredLaraProvider(): LaraTranslationProvider | undefined {
+  if (!config.isLaraConfigured || !config.laraAccessKeyId || !config.laraAccessKeySecret) {
+    return undefined;
+  }
+
+  return new LaraTranslateClient(
+    config.laraAccessKeyId,
+    config.laraAccessKeySecret,
+    config.upstream.laraTranslateTimeoutMs,
+  );
 }
 
 function normalizeWord(value: string): string {

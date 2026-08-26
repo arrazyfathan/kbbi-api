@@ -432,6 +432,7 @@ function createTranslateResult() {
     word: "demokrasi",
     from: "id",
     to: "en",
+    provider: "google",
     entries: [
       {
         headword: "demokrasi",

@@ -59,6 +59,10 @@ WIKIQUOTE_CACHE_TTL_MS=3600000
 KBBI_FETCH_TIMEOUT_MS=45000
 GOOGLE_TRANSLATE_URL=https://translate.googleapis.com/translate_a/single
 GOOGLE_TRANSLATE_TIMEOUT_MS=10000
+# Optional fallback. Both Lara credentials are required to enable it.
+LARA_ACCESS_KEY_ID=your-lara-access-key-id
+LARA_ACCESS_KEY_SECRET=your-lara-access-key-secret
+LARA_TRANSLATE_TIMEOUT_MS=10000
 TRANSLATE_CACHE_TTL_MS=3600000
 # Required in production. Use a long random server-only secret for visitor ID hashing.
 VISITOR_HASH_SALT=replace-with-random-secret
@@ -83,6 +87,9 @@ SUPABASE_ANON_KEY=your-anon-key
 | `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).   |
 | `GOOGLE_TRANSLATE_URL`         | No                 | Valid URL of the Google Translate scraper endpoint. Defaults to the unofficial `translate_a/single` endpoint.     |
 | `GOOGLE_TRANSLATE_TIMEOUT_MS`  | No                 | Positive integer timeout for each Google Translate request in milliseconds. Defaults to `10000` (`10` seconds).   |
+| `LARA_ACCESS_KEY_ID`           | For Lara fallback  | Server-only Lara API access key ID. Must be provided together with `LARA_ACCESS_KEY_SECRET`.                      |
+| `LARA_ACCESS_KEY_SECRET`       | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.       |
+| `LARA_TRANSLATE_TIMEOUT_MS`    | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                      |
 | `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                   |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.    |
@@ -91,7 +98,7 @@ SUPABASE_ANON_KEY=your-anon-key
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
 
-Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
+Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Google Translate is used first; when it fails and Lara credentials are configured, Lara Translate is used with no-trace mode. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
 
 ## Installation
 
