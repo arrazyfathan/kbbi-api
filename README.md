@@ -1,13 +1,14 @@
-# Indonesian Language & Quote Scraper API
+# KBBI API
 
-A REST API for Indonesian language data built with Node.js, Express 5, and TypeScript. The service scrapes KBBI for dictionary definitions and Wikiquote for Indonesian proverbs plus Indonesian figure profiles, photos, descriptions, and quotes.
+A REST API for Indonesian language data built with Node.js, Express 5, and TypeScript. It combines KBBI dictionary definitions, Wikiquote proverbs and Indonesian figures, translation, visit analytics, and AI-generated word-study material.
 
 ## Features
 
 - KBBI word search with structured headwords, word classes, and definitions.
 - Anonymous word visit tracking using `X-Visitor-Id`.
 - Top visited words API backed by Supabase aggregation.
-- AI word-study generation from client-supplied KBBI entries using strict OpenAI Structured Outputs.
+- AI word-study generation from client-supplied KBBI entries using server-configured OpenAI-compatible providers and strict Structured Outputs.
+- Public discovery of selectable AI providers and allowlisted models without exposing credentials or upstream URLs.
 - Paginated Indonesian proverb list, search, and detail endpoints.
 - Paginated Indonesian figure summary, search, and detail endpoints.
 - Request tracing with `X-Request-Id`, centralized error handling, and request logging with Pino.
@@ -31,6 +32,7 @@ curl "http://localhost:3000/api/v1/proverb/search?q=air&page=1&limit=5"
 curl "http://localhost:3000/api/v1/figure/search?q=soekarno"
 curl "http://localhost:3000/api/v1/figure/Soekarno"
 curl "http://localhost:3000/api/v1/translate/demokrasi"
+curl http://localhost:3000/api/v1/ai/providers
 curl -X POST http://localhost:3000/api/v1/ai/word-study -H "Content-Type: application/json" -d '{"word":"bahasa","language":"id","entries":[{"headword":"bahasa","definitions":[{"wordClass":"n","description":"sistem lambang bunyi yang digunakan masyarakat"}]}]}'
 ```
 
@@ -42,9 +44,10 @@ Every response includes an `x-request-id` header. Provide `X-Request-Id` to pres
 
 - Node.js compatible with the versions required by the dependencies in `package.json`.
 - npm.
-- Supabase project for word visit tracking and top visited words.
+- Optional: a Supabase project for word visit tracking and top visited words.
+- Optional: at least one Responses API-compatible AI provider for word-study generation.
 
-The scraping endpoints can run without Supabase, but word visit tracking and `/api/v1/words/top` require Supabase configuration.
+The core scraping endpoints run without Supabase or an AI provider. Word visit tracking and `/api/v1/words/top` require Supabase configuration. `GET /api/v1/ai/providers` remains available without AI configuration and returns an empty catalog; `POST /api/v1/ai/word-study` then returns `503`.
 
 ## Environment Variables
 
@@ -119,6 +122,23 @@ SUPABASE_ANON_KEY=your-anon-key
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
 
 Every configured provider must implement the Responses API at `/responses` and support strict JSON Schema Structured Outputs. Include the provider's version prefix (commonly `/v1`) in each base URL when required. Providers that only implement Chat Completions are not compatible with this endpoint. Clients can inspect the safe allowlist with `GET /api/v1/ai/providers`, then pass optional `provider` and `model` fields to `POST /api/v1/ai/word-study`; arbitrary client-supplied URLs and credentials are not accepted.
+
+### AI Provider Setup
+
+There are two supported configuration styles:
+
+1. Configure official OpenAI (or one legacy OpenAI-compatible endpoint) with `OPENAI_API_KEY`, `OPENAI_MODEL`, and optionally `OPENAI_BASE_URL`. This registers provider ID `openai`.
+2. Configure one or more providers with `AI_PROVIDERS`. Each object requires `id`, `apiKey`, `baseUrl`, and a non-empty `models` array. `defaultModel` is optional and defaults to the first model.
+
+Both styles can be used together. Provider IDs must be unique, `AI_DEFAULT_PROVIDER` must match a configured ID, and each `defaultModel` must appear in its provider's `models` list. If `AI_DEFAULT_PROVIDER` is omitted, the first configured provider is used.
+
+After startup, verify the client-safe catalog:
+
+```bash
+curl http://localhost:3000/api/v1/ai/providers
+```
+
+When calling `POST /api/v1/ai/word-study`, omit `provider` and `model` to use server defaults, or send values from this catalog. The response includes the provider and model that generated the material. See [AI endpoints](docs/API.md#11-list-ai-providers) for complete request and response examples.
 
 Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Google Translate is used first; when it fails and Lara credentials are configured, Lara Translate is used with no-trace mode. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
 
@@ -239,7 +259,7 @@ GET /api/v1/proverb/search
 GET /api/v1/figure/search
 ```
 
-`POST /api/v1/ai/word-study` has an additional limit of `10` requests per IP per `15` minutes. It is public, uncached, and each accepted request calls OpenAI.
+`POST /api/v1/ai/word-study` has an additional limit of `10` requests per IP per `15` minutes. It is public, uncached, and each accepted request calls the selected AI provider. `GET /api/v1/ai/providers` is subject only to the global limit.
 
 Requests over the limit return HTTP `429`:
 
@@ -290,7 +310,7 @@ npm run build
 ```
 
 The test suite covers parser fixtures, controller behavior, error responses, middleware, word visit tracking, top visited
-words behavior, and HTTP integration behavior.
+words behavior, translation fallback, AI validation/provider behavior, the OpenAPI contract, and HTTP integration behavior.
 
 ## Code Quality
 
@@ -306,13 +326,19 @@ npm run check
 
 ```text
 src/
-├── config/             # Environment and Supabase configuration
-├── controllers/        # Express request handlers
-├── interfaces/         # TypeScript response and domain types
-├── lib/                # Shared HTTP, logging, and async utilities
-├── middlewares/        # Request logging and error handling
-├── routes/             # API route definitions
-├── services/           # Scraping, parsing, and persistence logic
+├── config/             # Validated environment and Supabase configuration
+├── features/           # Domain modules: controllers, routes, services, parsers, and types
+│   ├── ai-word-study/  # Provider catalog and structured AI word-study generation
+│   ├── figures/        # Indonesian figure scraping and parsing
+│   ├── health/         # Liveness, readiness, and Supabase health
+│   ├── kbbi/           # KBBI lookup and parsing
+│   ├── proverbs/       # Indonesian proverb scraping and parsing
+│   ├── translate/      # Google translation with optional Lara fallback
+│   └── word-visits/    # Supabase-backed visit tracking and rankings
+├── lib/                # Shared HTTP, validation, caching, logging, and error utilities
+├── middlewares/        # Request logging, rate limiting, and error handling
+├── routes/             # Top-level API and documentation routers
+├── app-dependencies.ts # Service/controller dependency assembly
 ├── app.ts              # Express application setup
 └── server.ts           # Server entry point
 

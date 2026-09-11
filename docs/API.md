@@ -67,6 +67,9 @@ Returns basic information about the API.
     {
       "message": "Welcome to New KBBI API",
       "endpoints": [
+        "/health/live",
+        "/health/ready",
+        "/health/supabase",
         "/api/v1/search/[word]",
         "/api/v1/words/top",
         "/api/v1/proverb",
@@ -75,10 +78,15 @@ Returns basic information about the API.
         "/api/v1/figure",
         "/api/v1/figure/search",
         "/api/v1/figure/[slug]",
-        "/api/v1/translate/[word]",
-        "/api/v1/ai/word-study"
+        "/api/v1/ai/providers",
+        "/api/v1/ai/word-study",
+        "/translate/[word]",
+        "/api/v1/translate/[word]"
       ],
       "examples": [
+        "http://localhost:3000/health/live",
+        "http://localhost:3000/health/ready",
+        "http://localhost:3000/health/supabase",
         "http://localhost:3000/api/v1/search/demokrasi",
         "http://localhost:3000/api/v1/words/top?limit=10",
         "http://localhost:3000/api/v1/proverb?page=1&limit=20",
@@ -87,8 +95,9 @@ Returns basic information about the API.
         "http://localhost:3000/api/v1/figure?page=1&limit=10",
         "http://localhost:3000/api/v1/figure/search?q=soekarno",
         "http://localhost:3000/api/v1/figure/Soekarno",
-        "http://localhost:3000/api/v1/translate/demokrasi",
-        "http://localhost:3000/api/v1/ai/word-study"
+        "http://localhost:3000/api/v1/ai/providers",
+        "http://localhost:3000/api/v1/ai/word-study",
+        "http://localhost:3000/api/v1/translate/demokrasi"
       ]
     }
     ```
@@ -450,7 +459,34 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
   - **502 Bad Gateway**: Returned when all configured translation providers are unavailable.
   - **504 Gateway Timeout**: Returned when the final configured translation provider times out.
 
-### 11. Generate AI Word Study
+### 11. List AI Providers
+
+Returns the client-safe provider and model allowlist. This endpoint is available even when AI generation is not configured and never returns API keys or provider base URLs.
+
+- **URL**: `/api/v1/ai/providers`
+- **Method**: `GET`
+- **Success Response**: `200 OK`
+
+```json
+{
+  "success": true,
+  "message": "AI providers fetched",
+  "data": {
+    "defaultProvider": "openrouter",
+    "providers": [
+      {
+        "id": "openrouter",
+        "defaultModel": "vendor/model-a",
+        "models": ["vendor/model-a", "vendor/model-b"]
+      }
+    ]
+  }
+}
+```
+
+With no configured provider, `defaultProvider` is `null` and `providers` is an empty array. This endpoint uses the global IP rate limit; it does not use the stricter AI-generation limit.
+
+### 12. Generate AI Word Study
 
 Generates one-shot study material from the KBBI entries already displayed by the client. Requests are not cached, and there is no unversioned alias.
 
@@ -463,7 +499,7 @@ AI_PROVIDERS=[{"id":"openrouter","apiKey":"server-secret","baseUrl":"https://ope
 AI_DEFAULT_PROVIDER=openrouter
 ```
 
-Use `GET /api/v1/ai/providers` to discover the public allowlist. The response never contains credentials or upstream base URLs.
+Call `GET /api/v1/ai/providers` first to discover the public allowlist. If `provider` or `model` is omitted, the server selects the configured provider default and model default.
 
 - **URL**: `/api/v1/ai/word-study`
 - **Method**: `POST`
@@ -477,7 +513,9 @@ Use `GET /api/v1/ai/providers` to discover the public allowlist. The response ne
   - `description`: trimmed string of 1–1000 characters. Combined description text is limited to 12,000 characters.
   - Unknown properties are rejected.
 - **Success Response**: `200` with a nonblank explanation, at least two examples, at least two usage notes, at least three distinct related words, and the selected provider and model. These arrays have no maximum length and their generated counts may vary with the supplied meanings.
-- **Errors**: `400` invalid input, `429` endpoint limit, `502` sanitized OpenAI/refusal/output failure, `503` missing server configuration, or `504` timeout. Errors never include prompts, definitions, generated content, credentials, raw provider messages, or model names.
+- **Errors**: `400` invalid input or a provider/model outside the allowlist, `429` endpoint limit, `502` sanitized provider/refusal/output failure, `503` missing server configuration, or `504` timeout. Errors never include prompts, definitions, generated content, credentials, raw provider messages, or model names.
+
+Example request with an explicit provider and model:
 
 ```json
 {
@@ -496,5 +534,28 @@ Use `GET /api/v1/ai/providers` to discover the public allowlist. The response ne
       ]
     }
   ]
+}
+```
+
+Example response:
+
+```json
+{
+  "success": true,
+  "message": "Word study generated",
+  "data": {
+    "explanation": "Bahasa adalah sistem lambang bunyi yang digunakan manusia untuk berkomunikasi.",
+    "examples": [
+      "Bahasa Indonesia digunakan sebagai bahasa resmi negara.",
+      "Ia menggunakan bahasa yang sopan ketika berbicara."
+    ],
+    "usageNotes": [
+      "Kata ini dapat merujuk pada suatu sistem komunikasi.",
+      "Kata ini juga dapat merujuk pada cara seseorang bertutur."
+    ],
+    "relatedWords": ["berbahasa", "kebahasaan", "linguistik"],
+    "provider": "openrouter",
+    "model": "vendor/model-b"
+  }
 }
 ```

@@ -4,7 +4,7 @@ info:
   version: 1.1.0
   contact:
     name: Trianurdin B
-  description: Scraper API for KBBI definitions, Indonesian proverbs, and Indonesian figure quotes. Every response includes an x-request-id header for request correlation.
+  description: API for KBBI definitions, Indonesian proverbs and figures, translation, visit analytics, and structured AI word-study generation. Every response includes an x-request-id header for request correlation.
 servers:
   - url: /
     description: Same origin as the documentation page.
@@ -54,7 +54,10 @@ paths:
                       - /api/v1/figure
                       - /api/v1/figure/search
                       - /api/v1/figure/[slug]
+                      - /api/v1/ai/providers
                       - /api/v1/ai/word-study
+                      - /translate/[word]
+                      - /api/v1/translate/[word]
                     examples:
                       - http://localhost:3000/health/live
                       - http://localhost:3000/health/ready
@@ -67,7 +70,9 @@ paths:
                       - http://localhost:3000/api/v1/figure?page=1&limit=10
                       - http://localhost:3000/api/v1/figure/search?q=soekarno
                       - http://localhost:3000/api/v1/figure/Soekarno
+                      - http://localhost:3000/api/v1/ai/providers
                       - http://localhost:3000/api/v1/ai/word-study
+                      - http://localhost:3000/api/v1/translate/demokrasi
         "429":
           $ref: "#/components/responses/RateLimited"
         "500":
@@ -1010,7 +1015,7 @@ paths:
       tags:
         - AI Word Study
       summary: Generate study material for a KBBI word.
-      description: Generates uncached, structured study content from the supplied KBBI entries. This is the only route for this operation; no unversioned alias is exposed.
+      description: Generates uncached, structured study content from the supplied KBBI entries through a server-configured OpenAI-compatible Responses API. Omitted provider and model values use server defaults. Client values must appear in the provider catalog. This is the only route for this operation; no unversioned alias is exposed.
       operationId: generateWordStudy
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
