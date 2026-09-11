@@ -7,7 +7,8 @@ const VISITOR_ID_HEADER = "x-visitor-id";
 const REDACTED_HEADER_VALUE = "[Redacted]";
 
 export function shouldIgnoreRequestLog(req: Request): boolean {
-  return req.path === "/favicon.ico" || req.url === "/favicon.ico";
+  const path = req.path || req.url.split("?", 1)[0];
+  return path === "/favicon.ico" || path === "/api/v1/ai/word-study";
 }
 
 export function redactVisitorIdHeader(headers: Request["headers"]): Request["headers"] {

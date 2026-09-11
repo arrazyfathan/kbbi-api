@@ -35,6 +35,7 @@ describe("Express app integration", () => {
         "/api/v1/search/[word]",
         "/api/v1/words/top",
         "/api/v1/proverb/search",
+        "/api/v1/ai/word-study",
       ]),
     );
     expect(response.body.examples).toEqual(
@@ -43,6 +44,7 @@ describe("Express app integration", () => {
         "http://localhost:3000/health/ready",
         "http://localhost:3000/api/v1/search/demokrasi",
         "http://localhost:3000/api/v1/words/top?limit=10",
+        "http://localhost:3000/api/v1/ai/word-study",
       ]),
     );
   });

@@ -9,6 +9,8 @@ servers:
   - url: /
     description: Same origin as the documentation page.
 tags:
+  - name: AI Word Study
+    description: AI-generated study content based on client-supplied KBBI entries.
   - name: Health
     description: Runtime health and dependency connectivity checks.
   - name: Indonesian Figures
@@ -52,6 +54,7 @@ paths:
                       - /api/v1/figure
                       - /api/v1/figure/search
                       - /api/v1/figure/[slug]
+                      - /api/v1/ai/word-study
                     examples:
                       - http://localhost:3000/health/live
                       - http://localhost:3000/health/ready
@@ -64,6 +67,7 @@ paths:
                       - http://localhost:3000/api/v1/figure?page=1&limit=10
                       - http://localhost:3000/api/v1/figure/search?q=soekarno
                       - http://localhost:3000/api/v1/figure/Soekarno
+                      - http://localhost:3000/api/v1/ai/word-study
         "429":
           $ref: "#/components/responses/RateLimited"
         "500":
@@ -969,6 +973,103 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
+  /api/v1/ai/providers:
+    get:
+      tags:
+        - AI Word Study
+      summary: List selectable AI providers and models.
+      description: Returns the public provider/model allowlist. Credentials and upstream base URLs are never exposed.
+      operationId: listAiProviders
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+      responses:
+        "200":
+          description: AI provider catalog fetched successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordStudyProviderCatalogResponse"
+              examples:
+                configured:
+                  value:
+                    success: true
+                    message: AI providers fetched
+                    data:
+                      defaultProvider: openai
+                      providers:
+                        - id: openai
+                          defaultModel: configured-model
+                          models:
+                            - configured-model
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/ai/word-study:
+    post:
+      tags:
+        - AI Word Study
+      summary: Generate study material for a KBBI word.
+      description: Generates uncached, structured study content from the supplied KBBI entries. This is the only route for this operation; no unversioned alias is exposed.
+      operationId: generateWordStudy
+      parameters:
+        - $ref: "#/components/parameters/RequestIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WordStudyRequest"
+            examples:
+              bahasa:
+                value:
+                  word: bahasa
+                  language: id
+                  provider: openai
+                  model: configured-model
+                  entries:
+                    - headword: bahasa
+                      definitions:
+                        - wordClass: n
+                          description: sistem lambang bunyi yang digunakan masyarakat
+      responses:
+        "200":
+          description: Word study content generated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WordStudyResponse"
+              examples:
+                generated:
+                  value:
+                    success: true
+                    message: Word study generated
+                    data:
+                      explanation: Bahasa adalah sistem bunyi dan kata yang dipakai manusia untuk berkomunikasi.
+                      examples:
+                        - Bahasa Indonesia digunakan sebagai bahasa resmi negara.
+                        - Ia memilih bahasa yang sopan ketika berbicara dengan gurunya.
+                      usageNotes:
+                        - Kata ini umum digunakan dalam situasi formal maupun informal.
+                        - Maknanya dapat merujuk pada sistem komunikasi atau cara seseorang berbicara.
+                      relatedWords:
+                        - berbahasa
+                        - kebahasaan
+                        - linguistik
+                      provider: openai
+                      model: configured-model
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "502":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+        "504":
+          $ref: "#/components/responses/UpstreamTimeout"
 components:
   parameters:
     RequestIdHeader:
@@ -1196,6 +1297,176 @@ components:
                 code: UPSTREAM_TIMEOUT
                 requestId: client-request-1
   schemas:
+    WordStudyDefinition:
+      description: One client-supplied KBBI definition.
+      type: object
+      additionalProperties: false
+      required:
+        - wordClass
+        - description
+      properties:
+        wordClass:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    WordStudyEntry:
+      description: A headword and its displayed KBBI definitions.
+      type: object
+      additionalProperties: false
+      required:
+        - headword
+        - definitions
+      properties:
+        headword:
+          type: string
+          minLength: 1
+          maxLength: 100
+        definitions:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/WordStudyDefinition"
+    WordStudyRequest:
+      description: Validated source material and requested output language.
+      type: object
+      additionalProperties: false
+      required:
+        - word
+        - language
+        - entries
+      properties:
+        word:
+          type: string
+          minLength: 1
+          maxLength: 100
+        language:
+          type: string
+          enum:
+            - id
+            - en
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          description: Optional configured provider ID. Uses the server default when omitted.
+        model:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Optional model from the selected provider's allowlist. Uses that provider's default when omitted.
+        entries:
+          type: array
+          minItems: 1
+          maxItems: 10
+          description: Combined definition description text must not exceed 12000 characters.
+          items:
+            $ref: "#/components/schemas/WordStudyEntry"
+    WordStudyResult:
+      description: Generated learning content with server-owned provider attribution.
+      type: object
+      additionalProperties: false
+      required:
+        - explanation
+        - examples
+        - usageNotes
+        - relatedWords
+        - provider
+        - model
+      properties:
+        explanation:
+          type: string
+          minLength: 1
+        examples:
+          type: array
+          minItems: 2
+          description: At least two examples; the generated count may vary with the supplied meanings.
+          items:
+            type: string
+            minLength: 1
+        usageNotes:
+          type: array
+          minItems: 2
+          description: At least two usage notes; the generated count may vary with the supplied meanings.
+          items:
+            type: string
+            minLength: 1
+        relatedWords:
+          type: array
+          minItems: 3
+          description: At least three distinct related words; the generated count may vary.
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+        provider:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+    WordStudyResponse:
+      description: Successful AI word-study response envelope.
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WordStudyResult"
+    WordStudyProviderSummary:
+      description: Public ID and model allowlist for one configured OpenAI-compatible provider.
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - defaultModel
+        - models
+      properties:
+        id:
+          type: string
+          minLength: 1
+        defaultModel:
+          type: string
+          minLength: 1
+        models:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+    WordStudyProviderCatalog:
+      description: Public AI provider selection metadata with no credentials or upstream URLs.
+      type: object
+      additionalProperties: false
+      required:
+        - defaultProvider
+        - providers
+      properties:
+        defaultProvider:
+          type:
+            - string
+            - "null"
+        providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/WordStudyProviderSummary"
+    WordStudyProviderCatalogResponse:
+      description: Successful AI provider catalog response envelope.
+      allOf:
+        - $ref: "#/components/schemas/SuccessResponse"
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: "#/components/schemas/WordStudyProviderCatalog"
     RootResponse:
       description: Discovery payload returned by the API root endpoint.
       type: object

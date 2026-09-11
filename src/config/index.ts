@@ -17,10 +17,51 @@ const DEFAULT_GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate
 const DEFAULT_GOOGLE_TRANSLATE_TIMEOUT_MS = 10_000;
 const DEFAULT_LARA_TRANSLATE_TIMEOUT_MS = 10_000;
 const DEFAULT_TRANSLATE_CACHE_TTL_MS = 60 * 60 * 1000;
+const DEFAULT_OPENAI_TIMEOUT_MS = 30_000;
+const DEFAULT_AI_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const DEFAULT_AI_RATE_LIMIT_MAX = 10;
 
 const optionalTrimmedString = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
   z.string().trim().optional(),
+);
+
+const aiProviderSchema = z
+  .strictObject({
+    id: z
+      .string()
+      .trim()
+      .min(1)
+      .max(50)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/),
+    apiKey: z.string().trim().min(1),
+    baseUrl: z.string().trim().url(),
+    models: z.array(z.string().trim().min(1).max(200)).min(1).max(50),
+    defaultModel: z.string().trim().min(1).max(200).optional(),
+  })
+  .superRefine((provider, ctx) => {
+    if (new Set(provider.models).size !== provider.models.length) {
+      ctx.addIssue({ code: "custom", path: ["models"], message: "Models must be unique" });
+    }
+    if (provider.defaultModel && !provider.models.includes(provider.defaultModel)) {
+      ctx.addIssue({ code: "custom", path: ["defaultModel"], message: "Default model must be listed in models" });
+    }
+  });
+
+const aiProvidersEnv = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z
+    .string()
+    .transform((value, ctx) => {
+      try {
+        return JSON.parse(value) as unknown;
+      } catch {
+        ctx.addIssue({ code: "custom", message: "AI_PROVIDERS must be valid JSON" });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(aiProviderSchema).min(1).max(20))
+    .optional(),
 );
 
 function positiveIntegerEnv(name: string, defaultValue: number) {
@@ -61,6 +102,14 @@ const envSchema = z
     LARA_ACCESS_KEY_SECRET: optionalTrimmedString,
     LARA_TRANSLATE_TIMEOUT_MS: positiveIntegerEnv("LARA_TRANSLATE_TIMEOUT_MS", DEFAULT_LARA_TRANSLATE_TIMEOUT_MS),
     TRANSLATE_CACHE_TTL_MS: positiveIntegerEnv("TRANSLATE_CACHE_TTL_MS", DEFAULT_TRANSLATE_CACHE_TTL_MS),
+    OPENAI_API_KEY: optionalTrimmedString,
+    OPENAI_MODEL: optionalTrimmedString,
+    OPENAI_BASE_URL: optionalTrimmedString.pipe(z.url("OPENAI_BASE_URL must be a valid URL").optional()),
+    OPENAI_TIMEOUT_MS: positiveIntegerEnv("OPENAI_TIMEOUT_MS", DEFAULT_OPENAI_TIMEOUT_MS),
+    AI_PROVIDERS: aiProvidersEnv,
+    AI_DEFAULT_PROVIDER: optionalTrimmedString,
+    AI_RATE_LIMIT_WINDOW_MS: positiveIntegerEnv("AI_RATE_LIMIT_WINDOW_MS", DEFAULT_AI_RATE_LIMIT_WINDOW_MS),
+    AI_RATE_LIMIT_MAX: positiveIntegerEnv("AI_RATE_LIMIT_MAX", DEFAULT_AI_RATE_LIMIT_MAX),
     NODE_ENV: optionalTrimmedString,
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
     SUPABASE_ANON_KEY: optionalTrimmedString,
@@ -97,6 +146,28 @@ const envSchema = z
         path: ["VISITOR_HASH_SALT"],
       });
     }
+    if (Boolean(env.OPENAI_API_KEY) !== Boolean(env.OPENAI_MODEL)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "OpenAI config must include both OPENAI_API_KEY and OPENAI_MODEL",
+        path: env.OPENAI_API_KEY ? ["OPENAI_MODEL"] : ["OPENAI_API_KEY"],
+      });
+    }
+
+    const providerIds = [
+      ...(env.OPENAI_API_KEY && env.OPENAI_MODEL ? ["openai"] : []),
+      ...(env.AI_PROVIDERS?.map((provider) => provider.id) ?? []),
+    ];
+    if (new Set(providerIds).size !== providerIds.length) {
+      ctx.addIssue({ code: "custom", path: ["AI_PROVIDERS"], message: "Provider IDs must be unique" });
+    }
+    if (env.AI_DEFAULT_PROVIDER && !providerIds.includes(env.AI_DEFAULT_PROVIDER)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["AI_DEFAULT_PROVIDER"],
+        message: "AI_DEFAULT_PROVIDER must identify a configured provider",
+      });
+    }
   });
 
 const parsedEnv = parseEnv(process.env);
@@ -117,6 +188,12 @@ export type Config = {
   supabaseServiceRoleKey?: string;
   supabaseKey?: string;
   isSupabaseConfigured: boolean;
+  openAiApiKey?: string;
+  openAiModel?: string;
+  openAiBaseUrl?: string;
+  isOpenAiConfigured: boolean;
+  aiProviders: AiProviderConfig[];
+  defaultAiProvider?: string;
   visitorHashSalt?: string;
   rateLimit: {
     global: {
@@ -124,6 +201,10 @@ export type Config = {
       max: number;
     };
     scraper: {
+      windowMs: number;
+      max: number;
+    };
+    ai: {
       windowMs: number;
       max: number;
     };
@@ -136,8 +217,35 @@ export type Config = {
     kbbiFetchTimeoutMs: number;
     googleTranslateTimeoutMs: number;
     laraTranslateTimeoutMs: number;
+    openAiTimeoutMs: number;
   };
 };
+
+export type AiProviderConfig = {
+  id: string;
+  apiKey: string;
+  baseUrl?: string;
+  models: string[];
+  defaultModel: string;
+};
+
+const aiProviders: AiProviderConfig[] = [
+  ...(parsedEnv.OPENAI_API_KEY && parsedEnv.OPENAI_MODEL
+    ? [
+        {
+          id: "openai",
+          apiKey: parsedEnv.OPENAI_API_KEY,
+          baseUrl: parsedEnv.OPENAI_BASE_URL,
+          models: [parsedEnv.OPENAI_MODEL],
+          defaultModel: parsedEnv.OPENAI_MODEL,
+        },
+      ]
+    : []),
+  ...(parsedEnv.AI_PROVIDERS?.map((provider) => ({
+    ...provider,
+    defaultModel: provider.defaultModel ?? provider.models[0],
+  })) ?? []),
+];
 
 const config: Config = {
   port: parsedEnv.PORT,
@@ -155,6 +263,12 @@ const config: Config = {
   supabaseKey,
   isSupabaseConfigured: Boolean(parsedEnv.SUPABASE_URL && supabaseKey),
   visitorHashSalt: parsedEnv.VISITOR_HASH_SALT,
+  openAiApiKey: parsedEnv.OPENAI_API_KEY,
+  openAiModel: parsedEnv.OPENAI_MODEL,
+  openAiBaseUrl: parsedEnv.OPENAI_BASE_URL,
+  isOpenAiConfigured: Boolean(parsedEnv.OPENAI_API_KEY && parsedEnv.OPENAI_MODEL),
+  aiProviders,
+  defaultAiProvider: parsedEnv.AI_DEFAULT_PROVIDER ?? aiProviders[0]?.id,
   rateLimit: {
     global: {
       windowMs: parsedEnv.RATE_LIMIT_GLOBAL_WINDOW_MS,
@@ -163,6 +277,10 @@ const config: Config = {
     scraper: {
       windowMs: parsedEnv.RATE_LIMIT_SCRAPER_WINDOW_MS,
       max: parsedEnv.RATE_LIMIT_SCRAPER_MAX,
+    },
+    ai: {
+      windowMs: parsedEnv.AI_RATE_LIMIT_WINDOW_MS,
+      max: parsedEnv.AI_RATE_LIMIT_MAX,
     },
   },
   cache: {
@@ -173,6 +291,7 @@ const config: Config = {
     kbbiFetchTimeoutMs: parsedEnv.KBBI_FETCH_TIMEOUT_MS,
     googleTranslateTimeoutMs: parsedEnv.GOOGLE_TRANSLATE_TIMEOUT_MS,
     laraTranslateTimeoutMs: parsedEnv.LARA_TRANSLATE_TIMEOUT_MS,
+    openAiTimeoutMs: parsedEnv.OPENAI_TIMEOUT_MS,
   },
 };
 

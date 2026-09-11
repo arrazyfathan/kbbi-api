@@ -7,6 +7,7 @@ import { createKbbiRouter } from "../features/kbbi/kbbi.routes";
 import { createProverbRouter } from "../features/proverbs/proverb.routes";
 import { createTranslateRouter } from "../features/translate/translate.routes";
 import { createWordVisitRouter } from "../features/word-visits/word-visit.routes";
+import { createAiWordStudyRouter } from "../features/ai-word-study/ai-word-study.routes";
 
 export function createApiRouter(controllers: AppControllers): Router {
   const router = Router();
@@ -26,6 +27,8 @@ export function createApiRouter(controllers: AppControllers): Router {
         "/api/v1/figure",
         "/api/v1/figure/search",
         "/api/v1/figure/[slug]",
+        "/api/v1/ai/providers",
+        "/api/v1/ai/word-study",
         "/translate/[word]",
         "/api/v1/translate/[word]",
       ],
@@ -41,12 +44,17 @@ export function createApiRouter(controllers: AppControllers): Router {
         `${config.baseUrl}/api/v1/figure?page=1&limit=10`,
         `${config.baseUrl}/api/v1/figure/search?q=soekarno`,
         `${config.baseUrl}/api/v1/figure/Soekarno`,
+        `${config.baseUrl}/api/v1/ai/providers`,
+        `${config.baseUrl}/api/v1/ai/word-study`,
         `${config.baseUrl}/api/v1/translate/demokrasi`,
       ],
     });
   });
 
   router.use(createHealthRouter(controllers.healthController));
+  if (controllers.aiWordStudyController) {
+    router.use("/api/v1", createAiWordStudyRouter(controllers.aiWordStudyController));
+  }
   router.use("/api/v1", createDomainRouter(controllers));
   router.use(createDomainRouter(controllers));
 

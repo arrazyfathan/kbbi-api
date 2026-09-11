@@ -9,8 +9,13 @@ import TranslateController from "./features/translate/translate.controller";
 import { TranslateService } from "./features/translate/translate.service";
 import WordController from "./features/word-visits/word.controller";
 import { WordVisitService } from "./features/word-visits/word-visit.service";
+import AiWordStudyController from "./features/ai-word-study/ai-word-study.controller";
+import { AiWordStudyService } from "./features/ai-word-study/ai-word-study.service";
+import { createOpenAiCompatibleWordStudyProvider } from "./features/ai-word-study/openai-word-study.provider";
+import config from "./config";
 
 export type AppControllers = {
+  aiWordStudyController?: AiWordStudyController;
   healthController: HealthController;
   indonesianFigureController: IndonesianFigureController;
   kbbiController: KbbiController;
@@ -29,9 +34,21 @@ export function createAppDependencies(): AppDependencies {
   const proverbService = new ProverbService();
   const indonesianFigureService = new IndonesianFigureService();
   const translateService = new TranslateService(kbbiService);
+  const aiWordStudyProviders = config.aiProviders.map((provider) =>
+    createOpenAiCompatibleWordStudyProvider(
+      provider.id,
+      provider.apiKey,
+      provider.models,
+      provider.defaultModel,
+      config.upstream.openAiTimeoutMs,
+      provider.baseUrl,
+    ),
+  );
+  const aiWordStudyService = new AiWordStudyService(aiWordStudyProviders, config.defaultAiProvider);
 
   return {
     controllers: {
+      aiWordStudyController: new AiWordStudyController(aiWordStudyService),
       healthController: new HealthController(),
       indonesianFigureController: new IndonesianFigureController(indonesianFigureService),
       kbbiController: new KbbiController(kbbiService, wordVisitService),

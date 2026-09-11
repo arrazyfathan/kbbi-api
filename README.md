@@ -7,6 +7,7 @@ A REST API for Indonesian language data built with Node.js, Express 5, and TypeS
 - KBBI word search with structured headwords, word classes, and definitions.
 - Anonymous word visit tracking using `X-Visitor-Id`.
 - Top visited words API backed by Supabase aggregation.
+- AI word-study generation from client-supplied KBBI entries using strict OpenAI Structured Outputs.
 - Paginated Indonesian proverb list, search, and detail endpoints.
 - Paginated Indonesian figure summary, search, and detail endpoints.
 - Request tracing with `X-Request-Id`, centralized error handling, and request logging with Pino.
@@ -30,6 +31,7 @@ curl "http://localhost:3000/api/v1/proverb/search?q=air&page=1&limit=5"
 curl "http://localhost:3000/api/v1/figure/search?q=soekarno"
 curl "http://localhost:3000/api/v1/figure/Soekarno"
 curl "http://localhost:3000/api/v1/translate/demokrasi"
+curl -X POST http://localhost:3000/api/v1/ai/word-study -H "Content-Type: application/json" -d '{"word":"bahasa","language":"id","entries":[{"headword":"bahasa","definitions":[{"wordClass":"n","description":"sistem lambang bunyi yang digunakan masyarakat"}]}]}'
 ```
 
 Domain endpoints are versioned under `/api/v1`. Legacy root-level domain routes remain available temporarily for backward compatibility during migration.
@@ -64,6 +66,16 @@ LARA_ACCESS_KEY_ID=your-lara-access-key-id
 LARA_ACCESS_KEY_SECRET=your-lara-access-key-secret
 LARA_TRANSLATE_TIMEOUT_MS=10000
 TRANSLATE_CACHE_TTL_MS=3600000
+OPENAI_API_KEY=your-server-only-openai-api-key
+OPENAI_MODEL=your-structured-outputs-capable-model
+# Optional; omit to use https://api.openai.com/v1
+OPENAI_BASE_URL=https://your-openai-compatible-provider.example/v1
+# Optional single-line JSON for additional OpenAI-compatible providers.
+AI_PROVIDERS=[{"id":"openrouter","apiKey":"server-secret","baseUrl":"https://openrouter.ai/api/v1","models":["vendor/model-a","vendor/model-b"],"defaultModel":"vendor/model-a"}]
+AI_DEFAULT_PROVIDER=openrouter
+OPENAI_TIMEOUT_MS=30000
+AI_RATE_LIMIT_WINDOW_MS=900000
+AI_RATE_LIMIT_MAX=10
 # Required in production. Use a long random server-only secret for visitor ID hashing.
 VISITOR_HASH_SALT=replace-with-random-secret
 
@@ -91,12 +103,22 @@ SUPABASE_ANON_KEY=your-anon-key
 | `LARA_ACCESS_KEY_SECRET`       | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.       |
 | `LARA_TRANSLATE_TIMEOUT_MS`    | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                      |
 | `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                   |
+| `OPENAI_API_KEY`               | AI word study      | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL`.                                        |
+| `OPENAI_MODEL`                 | AI word study      | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                 |
+| `OPENAI_BASE_URL`              | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                       |
+| `AI_PROVIDERS`                 | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                       |
+| `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used when a word-study request omits `provider`.                                                      |
+| `OPENAI_TIMEOUT_MS`            | No                 | Positive integer OpenAI request timeout. Defaults to `30000` (`30` seconds).                                      |
+| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | AI endpoint rate-limit window. Defaults to `900000` (`15` minutes).                                               |
+| `AI_RATE_LIMIT_MAX`            | No                 | AI endpoint requests allowed per IP/window. Defaults to `10`.                                                     |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
 | `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                    |
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
+
+Every configured provider must implement the Responses API at `/responses` and support strict JSON Schema Structured Outputs. Include the provider's version prefix (commonly `/v1`) in each base URL when required. Providers that only implement Chat Completions are not compatible with this endpoint. Clients can inspect the safe allowlist with `GET /api/v1/ai/providers`, then pass optional `provider` and `model` fields to `POST /api/v1/ai/word-study`; arbitrary client-supplied URLs and credentials are not accepted.
 
 Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Google Translate is used first; when it fails and Lara credentials are configured, Lara Translate is used with no-trace mode. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
 
@@ -217,6 +239,8 @@ GET /api/v1/proverb/search
 GET /api/v1/figure/search
 ```
 
+`POST /api/v1/ai/word-study` has an additional limit of `10` requests per IP per `15` minutes. It is public, uncached, and each accepted request calls OpenAI.
+
 Requests over the limit return HTTP `429`:
 
 ```json
@@ -311,6 +335,7 @@ The repository includes `vercel.json` configured to route all requests to `src/s
 For production deployment:
 
 1. Configure the environment variables in the hosting provider.
+   For AI word study, configure either the legacy `OPENAI_*` variables, `AI_PROVIDERS`, or both, and enforce provider spend limits and alerts because the endpoint is public.
 2. Apply Supabase migrations.
 3. Deploy the app.
 4. Confirm `GET /health/live`, `GET /health/ready`, and `GET /health/supabase` report the expected runtime status.

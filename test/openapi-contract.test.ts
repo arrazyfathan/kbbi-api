@@ -16,6 +16,8 @@ import { API_ERROR_CODES } from "../src/lib/api-error";
 import { UpstreamHttpError } from "../src/lib/http-client";
 import { createRateLimiter } from "../src/middlewares/rate-limit.middleware";
 import { HealthService } from "../src/features/health/health.service";
+import AiWordStudyController from "../src/features/ai-word-study/ai-word-study.controller";
+import { serviceUnavailableError, upstreamTimeoutError, upstreamUnavailableError } from "../src/lib/api-error";
 
 type OpenApiResponse = {
   content?: {
@@ -151,6 +153,11 @@ describe("OpenAPI response contracts", () => {
         },
       ],
     });
+    testServices.aiWordStudyService.generate.mockResolvedValueOnce(createWordStudyResult());
+    testServices.aiWordStudyService.listProviders.mockReturnValueOnce({
+      defaultProvider: "openai",
+      providers: [{ id: "openai", defaultModel: "configured-model", models: ["configured-model"] }],
+    });
 
     const app = createApp();
 
@@ -209,6 +216,16 @@ describe("OpenAPI response contracts", () => {
       path: "/api/v1/figure/search",
       status: 200,
     });
+    expectResponseToMatchContract(await request(app).post("/api/v1/ai/word-study").send(createWordStudyRequest()), {
+      method: "post",
+      path: "/api/v1/ai/word-study",
+      status: 200,
+    });
+    expectResponseToMatchContract(await request(app).get("/api/v1/ai/providers"), {
+      method: "get",
+      path: "/api/v1/ai/providers",
+      status: 200,
+    });
   });
 
   it("validates documented validation and upstream error response contracts", async () => {
@@ -236,6 +253,25 @@ describe("OpenAPI response contracts", () => {
       path: "/api/v1/proverb/search",
       status: 400,
     });
+
+    expectResponseToMatchContract(await request(app).post("/api/v1/ai/word-study").send({}), {
+      method: "post",
+      path: "/api/v1/ai/word-study",
+      status: 400,
+    });
+
+    for (const [error, status] of [
+      [upstreamUnavailableError("AI generation is temporarily unavailable"), 502],
+      [serviceUnavailableError("AI word study is not configured"), 503],
+      [upstreamTimeoutError("OpenAI request timed out"), 504],
+    ] as const) {
+      testServices.aiWordStudyService.generate.mockRejectedValueOnce(error);
+      expectResponseToMatchContract(await request(app).post("/api/v1/ai/word-study").send(createWordStudyRequest()), {
+        method: "post",
+        path: "/api/v1/ai/word-study",
+        status,
+      });
+    }
   });
 
   it("validates app-level and rate-limit errors against reusable error schemas", async () => {
@@ -252,6 +288,9 @@ describe("OpenAPI response contracts", () => {
       requestId: "client-request-429",
     });
     expectResponseComponentToMatch("RateLimited", rateLimited.body);
+    expectSchemaToMatch("POST /api/v1/ai/word-study 429", rateLimited.body, () =>
+      getResponseSchema({ method: "post", path: "/api/v1/ai/word-study", status: 429 }),
+    );
   });
 });
 
@@ -302,12 +341,17 @@ function createTestServices() {
         error: "Missing SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY",
       })),
     },
+    aiWordStudyService: {
+      generate: vi.fn(),
+      listProviders: vi.fn(),
+    },
   };
 }
 
 function createTestDependencies(services: ReturnType<typeof createTestServices>): AppDependencies {
   return {
     controllers: {
+      aiWordStudyController: new AiWordStudyController(services.aiWordStudyService),
       healthController: new HealthController(services.healthService as unknown as HealthService),
       indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
       kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
@@ -315,6 +359,25 @@ function createTestDependencies(services: ReturnType<typeof createTestServices>)
       translateController: new TranslateController(services.translateService),
       wordController: new WordController(services.wordVisitService),
     },
+  };
+}
+
+function createWordStudyRequest() {
+  return {
+    word: "bahasa",
+    language: "id",
+    entries: [{ headword: "bahasa", definitions: [{ wordClass: "n", description: "sistem lambang bunyi" }] }],
+  };
+}
+
+function createWordStudyResult() {
+  return {
+    explanation: "Penjelasan sederhana.",
+    examples: ["Contoh pertama.", "Contoh kedua."],
+    usageNotes: ["Catatan pertama.", "Catatan kedua."],
+    relatedWords: ["berbahasa", "kebahasaan", "linguistik"],
+    provider: "openai",
+    model: "configured-model",
   };
 }
 

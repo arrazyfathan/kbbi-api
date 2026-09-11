@@ -75,7 +75,8 @@ Returns basic information about the API.
         "/api/v1/figure",
         "/api/v1/figure/search",
         "/api/v1/figure/[slug]",
-        "/api/v1/translate/[word]"
+        "/api/v1/translate/[word]",
+        "/api/v1/ai/word-study"
       ],
       "examples": [
         "http://localhost:3000/api/v1/search/demokrasi",
@@ -86,7 +87,8 @@ Returns basic information about the API.
         "http://localhost:3000/api/v1/figure?page=1&limit=10",
         "http://localhost:3000/api/v1/figure/search?q=soekarno",
         "http://localhost:3000/api/v1/figure/Soekarno",
-        "http://localhost:3000/api/v1/translate/demokrasi"
+        "http://localhost:3000/api/v1/translate/demokrasi",
+        "http://localhost:3000/api/v1/ai/word-study"
       ]
     }
     ```
@@ -447,3 +449,52 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
     ```
   - **502 Bad Gateway**: Returned when all configured translation providers are unavailable.
   - **504 Gateway Timeout**: Returned when the final configured translation provider times out.
+
+### 11. Generate AI Word Study
+
+Generates one-shot study material from the KBBI entries already displayed by the client. Requests are not cached, and there is no unversioned alias.
+
+The backend supports multiple server-configured providers that implement the OpenAI-compatible `/responses` endpoint and strict JSON Schema Structured Outputs. API keys and base URLs stay on the server; clients can select only advertised provider IDs and models.
+
+The legacy `OPENAI_API_KEY`, `OPENAI_MODEL`, and optional `OPENAI_BASE_URL` settings remain supported as provider `openai`. Add other providers with single-line JSON and choose a default:
+
+```dotenv
+AI_PROVIDERS=[{"id":"openrouter","apiKey":"server-secret","baseUrl":"https://openrouter.ai/api/v1","models":["vendor/model-a","vendor/model-b"],"defaultModel":"vendor/model-a"},{"id":"local","apiKey":"local-key","baseUrl":"http://127.0.0.1:11434/v1","models":["my-model"]}]
+AI_DEFAULT_PROVIDER=openrouter
+```
+
+Use `GET /api/v1/ai/providers` to discover the public allowlist. The response never contains credentials or upstream base URLs.
+
+- **URL**: `/api/v1/ai/word-study`
+- **Method**: `POST`
+- **Body**:
+  - `language`: `id` or `en`.
+  - `provider`: optional provider ID returned by `GET /api/v1/ai/providers`.
+  - `model`: optional model from that provider's advertised allowlist.
+  - `word` and each `headword`: trimmed strings of 1–100 characters.
+  - `entries`: 1–10 entries, each containing 1–20 definitions.
+  - `wordClass`: trimmed string of up to 50 characters; it may be empty.
+  - `description`: trimmed string of 1–1000 characters. Combined description text is limited to 12,000 characters.
+  - Unknown properties are rejected.
+- **Success Response**: `200` with a nonblank explanation, at least two examples, at least two usage notes, at least three distinct related words, and the selected provider and model. These arrays have no maximum length and their generated counts may vary with the supplied meanings.
+- **Errors**: `400` invalid input, `429` endpoint limit, `502` sanitized OpenAI/refusal/output failure, `503` missing server configuration, or `504` timeout. Errors never include prompts, definitions, generated content, credentials, raw provider messages, or model names.
+
+```json
+{
+  "word": "bahasa",
+  "language": "id",
+  "provider": "openrouter",
+  "model": "vendor/model-b",
+  "entries": [
+    {
+      "headword": "bahasa",
+      "definitions": [
+        {
+          "wordClass": "n",
+          "description": "sistem lambang bunyi yang digunakan masyarakat"
+        }
+      ]
+    }
+  ]
+}
+```

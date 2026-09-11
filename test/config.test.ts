@@ -15,6 +15,14 @@ const CONFIG_ENV_KEYS = [
   "LARA_ACCESS_KEY_SECRET",
   "LARA_TRANSLATE_TIMEOUT_MS",
   "TRANSLATE_CACHE_TTL_MS",
+  "OPENAI_API_KEY",
+  "OPENAI_MODEL",
+  "OPENAI_BASE_URL",
+  "OPENAI_TIMEOUT_MS",
+  "AI_PROVIDERS",
+  "AI_DEFAULT_PROVIDER",
+  "AI_RATE_LIMIT_WINDOW_MS",
+  "AI_RATE_LIMIT_MAX",
   "NODE_ENV",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
@@ -43,6 +51,10 @@ describe("config", () => {
     expect(config.kbbiUrl).toBe("https://kbbi.web.id");
     expect(config.isSupabaseConfigured).toBe(false);
     expect(config.isLaraConfigured).toBe(false);
+    expect(config.isOpenAiConfigured).toBe(false);
+    expect(config.aiProviders).toEqual([]);
+    expect(config.defaultAiProvider).toBeUndefined();
+    expect(config.openAiBaseUrl).toBeUndefined();
     expect(config.laraAccessKeyId).toBeUndefined();
     expect(config.laraAccessKeySecret).toBeUndefined();
     expect(config.supabaseUrl).toBeUndefined();
@@ -56,6 +68,10 @@ describe("config", () => {
         windowMs: 900000,
         max: 30,
       },
+      ai: {
+        windowMs: 900000,
+        max: 10,
+      },
     });
     expect(config.cache).toEqual({
       wikiquoteTtlMs: 3600000,
@@ -65,6 +81,7 @@ describe("config", () => {
       kbbiFetchTimeoutMs: 45000,
       googleTranslateTimeoutMs: 10000,
       laraTranslateTimeoutMs: 10000,
+      openAiTimeoutMs: 30000,
     });
     expect(config.googleTranslateUrl).toBe("https://translate.googleapis.com/translate_a/single");
   });
@@ -84,6 +101,12 @@ describe("config", () => {
     vi.stubEnv("LARA_ACCESS_KEY_SECRET", "lara-key-secret");
     vi.stubEnv("LARA_TRANSLATE_TIMEOUT_MS", "12000");
     vi.stubEnv("TRANSLATE_CACHE_TTL_MS", "60000");
+    vi.stubEnv("OPENAI_API_KEY", "openai-key");
+    vi.stubEnv("OPENAI_MODEL", "configured-model");
+    vi.stubEnv("OPENAI_BASE_URL", "https://compatible.example.com/v1");
+    vi.stubEnv("OPENAI_TIMEOUT_MS", "20000");
+    vi.stubEnv("AI_RATE_LIMIT_WINDOW_MS", "120000");
+    vi.stubEnv("AI_RATE_LIMIT_MAX", "5");
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("SUPABASE_ANON_KEY", "anon-key");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
@@ -102,6 +125,20 @@ describe("config", () => {
     expect(config.laraAccessKeyId).toBe("lara-key-id");
     expect(config.laraAccessKeySecret).toBe("lara-key-secret");
     expect(config.visitorHashSalt).toBe("salt-value");
+    expect(config.isOpenAiConfigured).toBe(true);
+    expect(config.openAiApiKey).toBe("openai-key");
+    expect(config.openAiModel).toBe("configured-model");
+    expect(config.openAiBaseUrl).toBe("https://compatible.example.com/v1");
+    expect(config.aiProviders).toEqual([
+      {
+        id: "openai",
+        apiKey: "openai-key",
+        baseUrl: "https://compatible.example.com/v1",
+        models: ["configured-model"],
+        defaultModel: "configured-model",
+      },
+    ]);
+    expect(config.defaultAiProvider).toBe("openai");
     expect(config.rateLimit).toEqual({
       global: {
         windowMs: 60000,
@@ -110,6 +147,10 @@ describe("config", () => {
       scraper: {
         windowMs: 30000,
         max: 10,
+      },
+      ai: {
+        windowMs: 120000,
+        max: 5,
       },
     });
     expect(config.cache).toEqual({
@@ -120,6 +161,7 @@ describe("config", () => {
       kbbiFetchTimeoutMs: 45000,
       googleTranslateTimeoutMs: 15000,
       laraTranslateTimeoutMs: 12000,
+      openAiTimeoutMs: 20000,
     });
     expect(config.googleTranslateUrl).toBe("https://translate.googleapis.com/translate_a/single");
   });
@@ -198,5 +240,44 @@ describe("config", () => {
 
     expect(() => parseEnv({ LARA_ACCESS_KEY_ID: "lara-key-id" })).toThrow(/Lara config/);
     expect(() => parseEnv({ LARA_ACCESS_KEY_SECRET: "lara-key-secret" })).toThrow(/Lara config/);
+  });
+
+  it("rejects partial OpenAI config and invalid AI limits", async () => {
+    const { parseEnv } = await import("../src/config");
+
+    expect(() => parseEnv({ OPENAI_API_KEY: "key" })).toThrow(/OpenAI config/);
+    expect(() => parseEnv({ OPENAI_MODEL: "model" })).toThrow(/OpenAI config/);
+    expect(() => parseEnv({ OPENAI_TIMEOUT_MS: "0" })).toThrow(/OPENAI_TIMEOUT_MS/);
+    expect(() => parseEnv({ AI_RATE_LIMIT_MAX: "nope" })).toThrow(/AI_RATE_LIMIT_MAX/);
+    expect(() => parseEnv({ OPENAI_BASE_URL: "not-a-url" })).toThrow(/OPENAI_BASE_URL/);
+  });
+
+  it("parses multiple OpenAI-compatible providers and validates their allowlists", async () => {
+    vi.stubEnv(
+      "AI_PROVIDERS",
+      JSON.stringify([
+        {
+          id: "OpenRouter",
+          apiKey: "router-key",
+          baseUrl: "https://openrouter.ai/api/v1",
+          models: ["vendor/fast", "vendor/smart"],
+          defaultModel: "vendor/smart",
+        },
+      ]),
+    );
+    vi.stubEnv("AI_DEFAULT_PROVIDER", "OpenRouter");
+
+    const { default: config, parseEnv } = await import("../src/config");
+    expect(config.defaultAiProvider).toBe("OpenRouter");
+    expect(config.aiProviders[0]).toMatchObject({ id: "OpenRouter", defaultModel: "vendor/smart" });
+    expect(() => parseEnv({ AI_PROVIDERS: "not-json" })).toThrow(/AI_PROVIDERS/);
+    expect(() =>
+      parseEnv({
+        AI_PROVIDERS: JSON.stringify([
+          { id: "provider", apiKey: "key", baseUrl: "https://example.com/v1", models: ["one"] },
+        ]),
+        AI_DEFAULT_PROVIDER: "missing",
+      }),
+    ).toThrow(/AI_DEFAULT_PROVIDER/);
   });
 });

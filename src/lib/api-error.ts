@@ -69,6 +69,22 @@ export function upstreamUnavailableError(message = "Upstream service is unavaila
   });
 }
 
+export function serviceUnavailableError(message = "Service is unavailable", cause?: unknown): ApiError {
+  return new ApiError(message, {
+    statusCode: 503,
+    code: API_ERROR_CODES.UPSTREAM_UNAVAILABLE,
+    cause,
+  });
+}
+
+export function upstreamTimeoutError(message = "Upstream request timed out", cause?: unknown): ApiError {
+  return new ApiError(message, {
+    statusCode: 504,
+    code: API_ERROR_CODES.UPSTREAM_TIMEOUT,
+    cause,
+  });
+}
+
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
