@@ -48,12 +48,17 @@ export class AiWordStudyService {
         { field: "model", location: "body", reason: `Model is not available for provider ${provider.name}` },
       ]);
     }
+    const resolvedRequest: WordStudyRequest = {
+      ...request,
+      provider: provider.name,
+      model,
+    };
 
     const startedAt = Date.now();
     try {
-      const rawContent = await provider.generate(request, model);
+      const rawContent = await provider.generate(resolvedRequest, model);
       const parsed = wordStudyContentSchema.safeParse(rawContent);
-      if (!parsed.success || !hasValidRelatedWords(request.word, parsed.data?.relatedWords)) {
+      if (!parsed.success || !hasValidRelatedWords(resolvedRequest.word, parsed.data?.relatedWords)) {
         throw new AiProviderError("malformed");
       }
 

@@ -103,11 +103,23 @@ describe("AiWordStudyService", () => {
     const second = { ...provider(), name: "compatible", defaultModel: "fast", models: ["fast", "smart"] };
     const service = new AiWordStudyService([first, second], "compatible");
 
+    await expect(service.generate(request)).resolves.toMatchObject({
+      provider: "compatible",
+      model: "fast",
+    });
+    expect(second.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "compatible", model: "fast" }),
+      "fast",
+    );
+
     await expect(service.generate({ ...request, model: "smart" })).resolves.toMatchObject({
       provider: "compatible",
       model: "smart",
     });
-    expect(second.generate).toHaveBeenCalledWith(expect.objectContaining({ model: "smart" }), "smart");
+    expect(second.generate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ provider: "compatible", model: "smart" }),
+      "smart",
+    );
 
     await expect(service.generate({ ...request, provider: "missing" })).rejects.toMatchObject({ statusCode: 400 });
     await expect(service.generate({ ...request, provider: "compatible", model: "unknown" })).rejects.toMatchObject({
