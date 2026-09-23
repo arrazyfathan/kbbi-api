@@ -763,6 +763,7 @@ paths:
                         - name: Soekarno
                           slug: Soekarno
                           sourceUrl: https://id.wikiquote.org/wiki/Soekarno
+                          photo: https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg
         "400":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -810,6 +811,7 @@ paths:
                         - name: Soekarno
                           slug: Soekarno
                           sourceUrl: https://id.wikiquote.org/wiki/Soekarno
+                          photo: https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg
         "400":
           $ref: "#/components/responses/ValidationError"
         "429":
