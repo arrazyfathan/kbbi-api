@@ -174,6 +174,7 @@ export class IndonesianFigureService {
         items: items.map((detail, index) => ({
           ...paginated.items[index],
           photo: detail?.photo ?? null,
+          description: detail?.description ?? null,
         })),
       };
     }

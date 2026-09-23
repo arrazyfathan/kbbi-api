@@ -341,7 +341,7 @@ Returns paginated Indonesian figure summaries scraped from Wikiquote. By default
 - **Query Params**:
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
-  - `includeDetails` (Optional): Set to `true` to include `photo`, `description`, and `quotes` in each item. Defaults to `false`.
+  - `description` is included in each item by default. `includeDetails` (Optional) may be set to `true` to also include `quotes`. Defaults to `false`.
 - **Example**: `/api/v1/figure?page=1&limit=10`
 - **Success Response**:
   - **Code**: 200 OK
@@ -381,7 +381,7 @@ Searches Indonesian figures by name and returns paginated summaries by default.
   - `q` (Required): Search keyword.
   - `page` (Optional): Page number, starting from `1`. Defaults to `1`.
   - `limit` (Optional): Items per page. Defaults to `20`, maximum `50`.
-  - `includeDetails` (Optional): Set to `true` to include `photo`, `description`, and `quotes` in each item. Defaults to `false`.
+  - `description` is included in each item by default. `includeDetails` (Optional) may be set to `true` to also include `quotes`. Defaults to `false`.
 - **Example**: `/api/v1/figure/search?q=soekarno`
 
 ### 9. Indonesian Figure Detail

@@ -740,7 +740,7 @@ paths:
         - $ref: "#/components/parameters/IncludeFigureDetails"
       responses:
         "200":
-          description: Paginated Indonesian figure list. Items are summaries unless includeDetails=true is provided.
+          description: Paginated Indonesian figure list. Items include photo and description; quotes are included when includeDetails=true.
           content:
             application/json:
               schema:
@@ -764,6 +764,7 @@ paths:
                           slug: Soekarno
                           sourceUrl: https://id.wikiquote.org/wiki/Soekarno
                           photo: https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg
+                          description: Soekarno adalah presiden pertama Republik Indonesia.
         "400":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -788,7 +789,7 @@ paths:
         - $ref: "#/components/parameters/IncludeFigureDetails"
       responses:
         "200":
-          description: Paginated Indonesian figure list. Items are summaries unless includeDetails=true is provided.
+          description: Paginated Indonesian figure list. Items include photo and description; quotes are included when includeDetails=true.
           content:
             application/json:
               schema:
@@ -812,6 +813,7 @@ paths:
                           slug: Soekarno
                           sourceUrl: https://id.wikiquote.org/wiki/Soekarno
                           photo: https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Presiden_Sukarno.jpg/250px-Presiden_Sukarno.jpg
+                          description: Soekarno adalah presiden pertama Republik Indonesia.
         "400":
           $ref: "#/components/responses/ValidationError"
         "429":
@@ -837,7 +839,7 @@ paths:
         - $ref: "#/components/parameters/IncludeFigureDetails"
       responses:
         "200":
-          description: Paginated Indonesian figure search results. Items are summaries unless includeDetails=true is provided.
+          description: Paginated Indonesian figure search results. Items include photo and description; quotes are included when includeDetails=true.
           content:
             application/json:
               schema:
@@ -867,7 +869,7 @@ paths:
         - $ref: "#/components/parameters/IncludeFigureDetails"
       responses:
         "200":
-          description: Paginated Indonesian figure search results. Items are summaries unless includeDetails=true is provided.
+          description: Paginated Indonesian figure search results. Items include photo and description; quotes are included when includeDetails=true.
           content:
             application/json:
               schema:
@@ -1162,7 +1164,7 @@ components:
       name: includeDetails
       in: query
       required: false
-      description: Set to true to include photo, description, and quotes in list/search items. Defaults to false so list/search avoid per-item detail-page requests.
+      description: Set to true to include quotes in list/search items. Photo and description are included by default. Defaults to false.
       schema:
         type: boolean
         default: false
@@ -1840,13 +1842,14 @@ components:
             data:
               $ref: "#/components/schemas/PaginatedProverbList"
     IndonesianFigureSummary:
-      description: Indonesian figure summary item.
+      description: Indonesian figure list/search item. Description is included by default; quotes are returned when includeDetails=true.
       type: object
       required:
         - name
         - slug
         - sourceUrl
         - photo
+        - description
       properties:
         name:
           anyOf:
@@ -1861,6 +1864,10 @@ components:
           anyOf:
             - type: string
               format: uri
+            - type: "null"
+        description:
+          anyOf:
+            - type: string
             - type: "null"
     IndonesianFigure:
       description: Indonesian figure detail with profile and quotes.

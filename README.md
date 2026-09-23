@@ -274,9 +274,9 @@ Standard `RateLimit` headers are included where supported. The default limiter u
 
 ## Indonesian Figures
 
-`GET /api/v1/figure` and `GET /api/v1/figure/search` return paginated summaries by default. Summary items contain `name`, `slug`, `sourceUrl`, and `photo`; use `GET /api/v1/figure/:slug` for full `description` and `quotes`.
+`GET /api/v1/figure` and `GET /api/v1/figure/search` return paginated summaries by default. Items contain `name`, `slug`, `sourceUrl`, `photo`, and `description`; use `GET /api/v1/figure/:slug` for full details including quotes.
 
-Pass `includeDetails=true` to `/api/v1/figure` or `/api/v1/figure/search` to also include `description` and `quotes`. Figure pages are fetched to resolve photos in both modes, so list responses take longer than summary-only metadata would.
+Pass `includeDetails=true` to `/api/v1/figure` or `/api/v1/figure/search` to also include `quotes`. Figure pages are fetched to resolve photos and descriptions in both modes, so list responses take longer than category metadata alone would.
 
 ## Available Scripts
 

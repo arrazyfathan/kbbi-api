@@ -117,6 +117,8 @@ describe("OpenAPI response contracts", () => {
           name: "Soekarno",
           slug: "Soekarno",
           sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+          photo: null,
+          description: null,
         },
       ],
     });
@@ -135,6 +137,8 @@ describe("OpenAPI response contracts", () => {
           name: "Soekarno",
           slug: "Soekarno",
           sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+          photo: null,
+          description: null,
         },
       ],
     });
