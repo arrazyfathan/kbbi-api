@@ -162,15 +162,21 @@ export class IndonesianFigureService {
     paginated: Omit<PaginatedIndonesianFigureList, "items"> & { items: IndonesianFigureSummary[] },
     includeDetails: boolean,
   ): Promise<PaginatedIndonesianFigureList> {
-    if (!includeDetails) {
-      return paginated;
-    }
-
     const items = await this.mapWithConcurrency(
       paginated.items,
       this.detailConcurrencyLimit,
       async (item) => await this.detail(item.slug, item),
     );
+
+    if (!includeDetails) {
+      return {
+        ...paginated,
+        items: items.map((detail, index) => ({
+          ...paginated.items[index],
+          photo: detail?.photo ?? null,
+        })),
+      };
+    }
 
     return {
       ...paginated,

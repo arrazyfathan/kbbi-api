@@ -4,6 +4,7 @@ export interface IndonesianFigureSummary {
   name: string | null;
   slug: string;
   sourceUrl: string;
+  photo: string | null;
 }
 
 export interface IndonesianFigure extends IndonesianFigureSummary {

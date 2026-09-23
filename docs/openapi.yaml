@@ -1844,6 +1844,7 @@ components:
         - name
         - slug
         - sourceUrl
+        - photo
       properties:
         name:
           anyOf:
@@ -1854,6 +1855,11 @@ components:
         sourceUrl:
           type: string
           format: uri
+        photo:
+          anyOf:
+            - type: string
+              format: uri
+            - type: "null"
     IndonesianFigure:
       description: Indonesian figure detail with profile and quotes.
       allOf:

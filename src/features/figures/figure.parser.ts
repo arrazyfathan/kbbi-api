@@ -22,6 +22,7 @@ export function parseIndonesianFigureCategoryHtml(
       name,
       slug,
       sourceUrl,
+      photo: null,
     });
   });
 
@@ -61,7 +62,7 @@ export function parseIndonesianFigureDetailHtml(
 }
 
 function extractFigureDescription($: cheerio.CheerioAPI): string | null {
-  const paragraphs = $("#mw-content-text .mw-parser-output > p")
+  const paragraphs = $("#mw-content-text .mw-parser-output p")
     .map((_, paragraph) => normalizeFigureText($(paragraph).text()))
     .get()
     .filter(Boolean);
@@ -96,18 +97,19 @@ function extractFigureQuotes($: cheerio.CheerioAPI): string[] {
   const content = $("#mw-content-text .mw-parser-output").first();
   const quotes: string[] = [];
   const seen = new Set<string>();
+  // MediaWiki has emitted both direct heading/list siblings and wrapped
+  // section markup over time. Walk the rendered content in document order
+  // so the quote section is still found when its heading or list is wrapped.
   let inQuoteSection = false;
-
-  content.children().each((_, element) => {
+  content.find("h2, h3, ul, ol").each((_, element) => {
     const current = $(element);
-    const heading = normalizeFigureSearchText(current.find("h2, h3, .mw-headline").first().text() || current.text());
-
-    if (current.is("h2, h3, .mw-heading")) {
+    if (current.is("h2, h3")) {
+      const heading = normalizeFigureSearchText(current.text());
       inQuoteSection = /^(kutipan|ucapan|perkataan|quotes?)/i.test(heading);
       return;
     }
 
-    if (!inQuoteSection || !current.is("ul, ol")) {
+    if (!inQuoteSection) {
       return;
     }
 
