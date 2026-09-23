@@ -109,7 +109,7 @@ function extractFigureQuotes($: cheerio.CheerioAPI): string[] {
       return;
     }
 
-    if (!inQuoteSection) {
+    if (!inQuoteSection || current.parents("ul, ol").length > 0) {
       return;
     }
 

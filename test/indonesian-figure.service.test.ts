@@ -12,13 +12,17 @@ describe("IndonesianFigureService", () => {
     vi.clearAllMocks();
   });
 
-  it("lists summary items by default without fetching detail pages", async () => {
+  it("lists items with photo and description by default", async () => {
     const getScraperHtml = vi.fn(async (url: string) => {
       if (url.includes("pagefrom=Hatta")) {
         return '<html><body><div id="mw-pages"></div></body></html>';
       }
 
-      return fixture("figure-category.html");
+      if (url.includes("Kategori:Tokoh_Indonesia")) {
+        return fixture("figure-category.html");
+      }
+
+      return fixture("figure-detail.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
     const service = new IndonesianFigureService();
@@ -30,11 +34,15 @@ describe("IndonesianFigureService", () => {
         name: "Soekarno",
         slug: "Soekarno",
         sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+        photo: "https://upload.wikimedia.org/soekarno.jpg",
+        description: "Soekarno adalah Presiden pertama Republik Indonesia.",
       },
       {
         name: "Cut Nyak Dien",
         slug: "Cut_Nyak_Dien",
         sourceUrl: "https://id.wikiquote.org/w/index.php?title=Cut_Nyak_Dien",
+        photo: "https://upload.wikimedia.org/soekarno.jpg",
+        description: "Soekarno adalah Presiden pertama Republik Indonesia.",
       },
     ]);
     expect(result.pagination).toMatchObject({
@@ -43,17 +51,19 @@ describe("IndonesianFigureService", () => {
       total: 2,
       totalPages: 1,
     });
-    expect(getScraperHtml).not.toHaveBeenCalledWith("https://id.wikiquote.org/wiki/Soekarno");
-    expect(getScraperHtml).not.toHaveBeenCalledWith("https://id.wikiquote.org/w/index.php?title=Cut_Nyak_Dien");
   });
 
-  it("searches summary items by default without fetching detail pages", async () => {
+  it("searches items with photo and description by default", async () => {
     const getScraperHtml = vi.fn(async (url: string) => {
       if (url.includes("pagefrom=Hatta")) {
         return '<html><body><div id="mw-pages"></div></body></html>';
       }
 
-      return fixture("figure-category.html");
+      if (url.includes("Kategori:Tokoh_Indonesia")) {
+        return fixture("figure-category.html");
+      }
+
+      return fixture("figure-detail.html");
     });
     const { IndonesianFigureService } = await loadService(getScraperHtml);
     const service = new IndonesianFigureService();
@@ -65,10 +75,11 @@ describe("IndonesianFigureService", () => {
         name: "Soekarno",
         slug: "Soekarno",
         sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+        photo: "https://upload.wikimedia.org/soekarno.jpg",
+        description: "Soekarno adalah Presiden pertama Republik Indonesia.",
       },
     ]);
     expect(result.pagination.total).toBe(1);
-    expect(getScraperHtml).not.toHaveBeenCalledWith("https://id.wikiquote.org/wiki/Soekarno");
   });
 
   it("fetches details with bounded concurrency when includeDetails is true", async () => {
@@ -98,6 +109,7 @@ describe("IndonesianFigureService", () => {
       name: "Figure 1",
       slug: "Figure_1",
       photo: "https://upload.wikimedia.org/soekarno.jpg",
+      description: "Soekarno adalah Presiden pertama Republik Indonesia.",
       quotes: ["Gantungkan cita-citamu setinggi langit", "Jas merah"],
     });
     expect(detailRequestCount).toBe(7);
@@ -120,7 +132,7 @@ describe("IndonesianFigureService", () => {
     now = 1000;
     await service.search("soekarno", 1, 20);
 
-    expect(getScraperHtml).toHaveBeenCalledTimes(2);
+    expect(getScraperHtml).toHaveBeenCalledTimes(4);
   });
 
   it("logs list cache misses and hits", async () => {
@@ -183,7 +195,7 @@ describe("IndonesianFigureService", () => {
     now = 3600000;
     await service.list(1, 20);
 
-    expect(getScraperHtml).toHaveBeenCalledTimes(4);
+    expect(getScraperHtml).toHaveBeenCalledTimes(8);
   });
 
   it("reuses detail cache before TTL expires", async () => {

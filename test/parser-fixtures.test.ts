@@ -147,11 +147,13 @@ describe("Wikiquote Indonesian figure parser fixtures", () => {
           name: "Soekarno",
           slug: "Soekarno",
           sourceUrl: "https://id.wikiquote.org/wiki/Soekarno",
+          photo: null,
         },
         {
           name: "Cut Nyak Dien",
           slug: "Cut_Nyak_Dien",
           sourceUrl: "https://id.wikiquote.org/w/index.php?title=Cut_Nyak_Dien",
+          photo: null,
         },
       ],
       nextUrl: "https://id.wikiquote.org/w/index.php?title=Kategori:Tokoh_Indonesia&pagefrom=Hatta",
