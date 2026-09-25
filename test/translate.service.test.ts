@@ -226,6 +226,64 @@ describe("TranslateService", () => {
 
     await expect(service.translate("demokrasi", "en")).rejects.toThrow("Lara quota exceeded");
   });
+
+  it("uses AI to translate an AI-generated definition when Google and Lara both fail", async () => {
+    const getScraperHtml = vi.fn(async () => {
+      throw new Error("Google quota exceeded");
+    });
+    const laraProvider = {
+      translate: vi.fn(async () => {
+        throw new Error("Lara quota exceeded");
+      }),
+    };
+    const aiDefinitionService = {
+      isConfigured: vi.fn(() => true),
+      generate: vi.fn(async () => [
+        {
+          headword: "pencilan",
+          definitions: [{ wordClass: "n[Nomina]", description: "Data yang menyimpang jauh dari nilai lainnya" }],
+        },
+      ]),
+    };
+    const aiTranslationProvider = {
+      translate: vi.fn(async () => ["outlier", "A data point that differs greatly from other values"]),
+    };
+    const { TranslateService, kbbiService } = await loadService(getScraperHtml);
+    kbbiService.search.mockResolvedValueOnce(null);
+    const service = new TranslateService(kbbiService, { laraProvider, aiDefinitionService, aiTranslationProvider });
+
+    const result = await service.translate("pencilan", "en");
+
+    expect(aiTranslationProvider.translate).toHaveBeenCalledWith(
+      ["pencilan", "Data yang menyimpang jauh dari nilai lainnya"],
+      "en",
+    );
+    expect(result).toMatchObject({
+      word: "pencilan",
+      translation: "outlier",
+      provider: "ai",
+      aiGenerated: true,
+      entries: [
+        {
+          headword: "pencilan",
+          definitions: [{ translation: "A data point that differs greatly from other values" }],
+        },
+      ],
+    });
+  });
+
+  it("does not use AI translation for a KBBI entry when translation providers fail", async () => {
+    const getScraperHtml = vi.fn(async () => {
+      throw new Error("Google quota exceeded");
+    });
+    const aiTranslationProvider = { translate: vi.fn() };
+    const { TranslateService, kbbiService } = await loadService(getScraperHtml);
+    kbbiService.search.mockResolvedValueOnce(kbbiEntries);
+    const service = new TranslateService(kbbiService, { laraProvider: null, aiTranslationProvider });
+
+    await expect(service.translate("demokrasi", "en")).rejects.toThrow("Google quota exceeded");
+    expect(aiTranslationProvider.translate).not.toHaveBeenCalled();
+  });
 });
 
 async function loadService(getScraperHtml: (url: string) => Promise<string>) {

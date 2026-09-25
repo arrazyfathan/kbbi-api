@@ -12,4 +12,6 @@ export interface KbbiSearchResult {
   word: string;
   visitorCount: number | null;
   entries: Entry[];
+  aiGenerated?: true;
+  notice?: string;
 }

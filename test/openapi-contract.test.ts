@@ -157,6 +157,9 @@ describe("OpenAPI response contracts", () => {
         },
       ],
     });
+    testServices.translateService.lookup.mockResolvedValueOnce([
+      { headword: "demokrasi", definitions: [{ wordClass: "n[Nomina]", description: "pemerintahan rakyat" }] },
+    ]);
     testServices.aiWordStudyService.generate.mockResolvedValueOnce(createWordStudyResult());
     testServices.aiWordStudyService.listProviders.mockReturnValueOnce({
       defaultProvider: "openai",
@@ -319,6 +322,8 @@ function createTestServices() {
     },
     translateService: {
       translate: vi.fn(),
+      lookup: vi.fn(),
+      isAiConfigured: vi.fn(() => false),
     },
     wordVisitService: {
       getTopVisitedWords: vi.fn(),

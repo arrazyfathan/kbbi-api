@@ -1,13 +1,15 @@
 # KBBI API
 
-A REST API for Indonesian language data built with Node.js, Express 5, and TypeScript. It combines KBBI dictionary definitions, Wikiquote proverbs and Indonesian figures, translation, visit analytics, and AI-generated word-study material.
+A REST API for Indonesian language data built with Node.js, Express 5, and TypeScript. It combines KBBI dictionary definitions, labeled AI definitions for source misses, Wikiquote proverbs and Indonesian figures, translation, visit analytics, and AI-generated word-study material.
 
 ## Features
 
 - KBBI word search with structured headwords, word classes, and definitions.
+- Labeled AI definition fallback when the configured KBBI source has no entry.
+- Word and definition translation with Google, optional Lara, and AI translation fallback for AI-generated definitions.
 - Anonymous word visit tracking using `X-Visitor-Id`.
 - Top visited words API backed by Supabase aggregation.
-- AI word-study generation from client-supplied KBBI entries using server-configured OpenAI-compatible providers and strict Structured Outputs.
+- AI word-study generation from client-supplied entries using server-configured OpenAI-compatible providers and strict Structured Outputs.
 - Public discovery of selectable AI providers and allowlisted models without exposing credentials or upstream URLs.
 - Paginated Indonesian proverb list, search, and detail endpoints.
 - Paginated Indonesian figure summary, search, and detail endpoints.
@@ -27,11 +29,13 @@ Quick examples:
 curl http://localhost:3000/api/v1/search/demokrasi
 curl -H "X-Request-Id: local-debug-1" http://localhost:3000/api/v1/search/demokrasi
 curl -H "X-Visitor-Id: anonymous-client-id" http://localhost:3000/api/v1/search/demokrasi
+curl http://localhost:3000/api/v1/search/pencilan
 curl http://localhost:3000/api/v1/words/top?limit=10
 curl "http://localhost:3000/api/v1/proverb/search?q=air&page=1&limit=5"
 curl "http://localhost:3000/api/v1/figure/search?q=soekarno"
 curl "http://localhost:3000/api/v1/figure/Soekarno"
 curl "http://localhost:3000/api/v1/translate/demokrasi"
+curl "http://localhost:3000/api/v1/translate/pencilan?to=en"
 curl http://localhost:3000/api/v1/ai/providers
 curl -X POST http://localhost:3000/api/v1/ai/word-study -H "Content-Type: application/json" -d '{"word":"bahasa","language":"id","entries":[{"headword":"bahasa","definitions":[{"wordClass":"n","description":"sistem lambang bunyi yang digunakan masyarakat"}]}]}'
 ```
@@ -45,9 +49,9 @@ Every response includes an `x-request-id` header. Provide `X-Request-Id` to pres
 - Node.js compatible with the versions required by the dependencies in `package.json`.
 - npm.
 - Optional: a Supabase project for word visit tracking and top visited words.
-- Optional: at least one Responses API-compatible AI provider for word-study generation.
+- Optional: at least one Responses API-compatible AI provider for word study and missing-word definition and translation fallbacks.
 
-The core scraping endpoints run without Supabase or an AI provider. Word visit tracking and `/api/v1/words/top` require Supabase configuration. `GET /api/v1/ai/providers` remains available without AI configuration and returns an empty catalog; `POST /api/v1/ai/word-study` then returns `503`.
+The core scraping endpoints run without Supabase or an AI provider. Without AI configuration, missing words remain `404` on search and translation. Word visit tracking and `/api/v1/words/top` require Supabase configuration. `GET /api/v1/ai/providers` remains available without AI configuration and returns an empty catalog; `POST /api/v1/ai/word-study` then returns `503`.
 
 ## Environment Variables
 
@@ -106,14 +110,14 @@ SUPABASE_ANON_KEY=your-anon-key
 | `LARA_ACCESS_KEY_SECRET`       | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.       |
 | `LARA_TRANSLATE_TIMEOUT_MS`    | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                      |
 | `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                   |
-| `OPENAI_API_KEY`               | AI word study      | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL`.                                        |
-| `OPENAI_MODEL`                 | AI word study      | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                 |
+| `OPENAI_API_KEY`               | AI features        | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL` if using legacy configuration.          |
+| `OPENAI_MODEL`                 | AI features        | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                 |
 | `OPENAI_BASE_URL`              | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                       |
 | `AI_PROVIDERS`                 | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                       |
-| `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used when a word-study request omits `provider`.                                                      |
+| `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used for missing-word fallbacks and when a word-study request omits `provider`.                       |
 | `OPENAI_TIMEOUT_MS`            | No                 | Positive integer OpenAI request timeout. Defaults to `30000` (`30` seconds).                                      |
-| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | AI endpoint rate-limit window. Defaults to `900000` (`15` minutes).                                               |
-| `AI_RATE_LIMIT_MAX`            | No                 | AI endpoint requests allowed per IP/window. Defaults to `10`.                                                     |
+| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | Shared AI rate-limit window for word study and missing-word fallbacks. Defaults to `900000` (`15` minutes).       |
+| `AI_RATE_LIMIT_MAX`            | No                 | AI requests allowed per IP/window. Defaults to `10`.                                                              |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
@@ -138,9 +142,9 @@ After startup, verify the client-safe catalog:
 curl http://localhost:3000/api/v1/ai/providers
 ```
 
-When calling `POST /api/v1/ai/word-study`, omit `provider` and `model` to use server defaults, or send values from this catalog. The response includes the provider and model that generated the material. See [AI endpoints](docs/API.md#11-list-ai-providers) for complete request and response examples.
+When calling `POST /api/v1/ai/word-study`, omit `provider` and `model` to use server defaults, or send values from this catalog. The response includes the provider and model that generated the material. The default provider also generates definitions for missing words and translates them when the available translation providers fail. See the [search](docs/API.md#2-search-word), [translation](docs/API.md#10-translate-word-meanings), and [AI endpoints](docs/API.md#11-list-ai-providers) for response examples.
 
-Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Google Translate is used first; when it fails and Lara credentials are configured, Lara Translate is used with no-trace mode. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
+Wikiquote proverb and Indonesian figure list/detail responses are cached in process memory until `WIKIQUOTE_CACHE_TTL_MS` expires. Requests before expiry reuse cached data; the first request after expiry refreshes the data from Wikiquote. Translated meanings (`/api/v1/translate/:word`) are cached per word and target language until `TRANSLATE_CACHE_TTL_MS` expires. Google Translate is used first; when it fails and Lara credentials are configured, Lara Translate is used with no-trace mode. If the available translation providers fail for an AI-generated definition, the default AI provider translates it and the response uses `provider: "ai"`. Caches are process-local, reset on restart, and are not shared across multiple deployed instances.
 
 ## Installation
 
@@ -331,9 +335,9 @@ src/
 │   ├── ai-word-study/  # Provider catalog and structured AI word-study generation
 │   ├── figures/        # Indonesian figure scraping and parsing
 │   ├── health/         # Liveness, readiness, and Supabase health
-│   ├── kbbi/           # KBBI lookup and parsing
+│   ├── kbbi/           # KBBI lookup, parsing, and AI definition fallback
 │   ├── proverbs/       # Indonesian proverb scraping and parsing
-│   ├── translate/      # Google translation with optional Lara fallback
+│   ├── translate/      # Google translation with optional Lara and AI fallbacks
 │   └── word-visits/    # Supabase-backed visit tracking and rankings
 ├── lib/                # Shared HTTP, validation, caching, logging, and error utilities
 ├── middlewares/        # Request logging, rate limiting, and error handling

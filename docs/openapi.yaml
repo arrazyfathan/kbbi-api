@@ -4,7 +4,7 @@ info:
   version: 1.1.0
   contact:
     name: Trianurdin B
-  description: API for KBBI definitions, Indonesian proverbs and figures, translation, visit analytics, and structured AI word-study generation. Every response includes an x-request-id header for request correlation.
+  description: API for KBBI definitions with labeled AI fallback, Indonesian proverbs and figures, translation with AI fallback for AI-generated definitions, visit analytics, and structured AI word-study generation. Every response includes an x-request-id header for request correlation.
 servers:
   - url: /
     description: Same origin as the documentation page.
@@ -192,8 +192,8 @@ paths:
     get:
       tags:
         - Words
-      summary: Search a KBBI word.
-      description: Searches KBBI for the requested word and optionally tracks a visitor-scoped daily visit.
+      summary: Search an Indonesian word.
+      description: Searches the configured KBBI source, then attempts an AI definition when no entry is found. AI results are labeled, and a source miss does not establish official KBBI registration status. Optionally tracks a visitor-scoped daily visit. Returns 404 if AI is unconfigured, unavailable, or unable to define the word.
       operationId: searchWord
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -201,7 +201,7 @@ paths:
         - $ref: "#/components/parameters/VisitorIdHeader"
       responses:
         "200":
-          description: KBBI word search result payload.
+          description: KBBI or labeled AI word search result payload.
           content:
             application/json:
               schema:
@@ -226,6 +226,20 @@ paths:
                           definitions:
                             - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
                               description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
+                aiGenerated:
+                  value:
+                    success: true
+                    message: Search successful
+                    data:
+                      word: pencilan
+                      visitorCount: 12
+                      entries:
+                        - headword: pencilan
+                          definitions:
+                            - wordClass: "n[Nomina]"
+                              description: Data yang menyimpang jauh dari nilai-nilai lain dalam sekumpulan data.
+                      aiGenerated: true
+                      notice: Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI.
         "400":
           $ref: "#/components/responses/ValidationError"
         "404":
@@ -242,8 +256,8 @@ paths:
     get:
       tags:
         - Words
-      summary: Search a KBBI word.
-      description: Searches KBBI for the requested word and optionally tracks a visitor-scoped daily visit.
+      summary: Search an Indonesian word.
+      description: Searches the configured KBBI source, then attempts an AI definition when no entry is found. AI results are labeled, and a source miss does not establish official KBBI registration status. Optionally tracks a visitor-scoped daily visit. Returns 404 if AI is unconfigured, unavailable, or unable to define the word.
       operationId: searchWordV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -251,7 +265,7 @@ paths:
         - $ref: "#/components/parameters/VisitorIdHeader"
       responses:
         "200":
-          description: KBBI word search result payload.
+          description: KBBI or labeled AI word search result payload.
           content:
             application/json:
               schema:
@@ -276,6 +290,20 @@ paths:
                           definitions:
                             - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
                               description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
+                aiGenerated:
+                  value:
+                    success: true
+                    message: Search successful
+                    data:
+                      word: pencilan
+                      visitorCount: 12
+                      entries:
+                        - headword: pencilan
+                          definitions:
+                            - wordClass: "n[Nomina]"
+                              description: Data yang menyimpang jauh dari nilai-nilai lain dalam sekumpulan data.
+                      aiGenerated: true
+                      notice: Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI.
         "400":
           $ref: "#/components/responses/ValidationError"
         "404":
@@ -292,8 +320,8 @@ paths:
     get:
       tags:
         - Words
-      summary: Translate the meanings of a KBBI word.
-      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language, with an optional Lara Translate fallback.
+      summary: Translate the meanings of an Indonesian word.
+      description: Looks up a word in the configured KBBI source, then uses a configured AI definition fallback on a source miss. Translates the word and every meaning from Indonesian to the requested target language using Google, optional Lara, then AI translation for AI-generated definitions if the other providers fail. AI fallback requests share the AI rate limit.
       operationId: translateWord
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -301,7 +329,7 @@ paths:
         - $ref: "#/components/parameters/TranslateToQuery"
       responses:
         "200":
-          description: KBBI word with translated meanings payload.
+          description: KBBI or labeled AI definition with translated meanings payload.
           content:
             application/json:
               schema:
@@ -330,6 +358,24 @@ paths:
                             - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
                               description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
                               translation: "(form or system) of government in which all the people participate in governing through their representatives; people's government"
+                aiFallback:
+                  value:
+                    success: true
+                    message: Translation successful
+                    data:
+                      word: pencilan
+                      translation: outlier
+                      from: id
+                      to: en
+                      provider: ai
+                      entries:
+                        - headword: pencilan
+                          definitions:
+                            - wordClass: "n[Nomina]"
+                              description: "Data yang menyimpang jauh dari nilai-nilai lain dalam sekumpulan data."
+                              translation: "A data point that differs greatly from other values in a dataset."
+                      aiGenerated: true
+                      notice: Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI.
         "400":
           $ref: "#/components/responses/ValidationError"
         "404":
@@ -346,8 +392,8 @@ paths:
     get:
       tags:
         - Words
-      summary: Translate the meanings of a KBBI word.
-      description: Looks up a word in KBBI and translates the word itself and every meaning from Indonesian to the requested target language, with an optional Lara Translate fallback.
+      summary: Translate the meanings of an Indonesian word.
+      description: Looks up a word in the configured KBBI source, then uses a configured AI definition fallback on a source miss. Translates the word and every meaning from Indonesian to the requested target language using Google, optional Lara, then AI translation for AI-generated definitions if the other providers fail. AI fallback requests share the AI rate limit.
       operationId: translateWordV1
       parameters:
         - $ref: "#/components/parameters/RequestIdHeader"
@@ -355,7 +401,7 @@ paths:
         - $ref: "#/components/parameters/TranslateToQuery"
       responses:
         "200":
-          description: KBBI word with translated meanings payload.
+          description: KBBI or labeled AI definition with translated meanings payload.
           content:
             application/json:
               schema:
@@ -384,6 +430,24 @@ paths:
                             - wordClass: "n[Nomina: kata benda] Pol[Politik dan Pemerintahan: -]"
                               description: "(bentuk atau sistem) pemerintahan yang seluruh rakyatnya turut serta memerintah dengan perantaraan wakilnya; pemerintahan rakyat"
                               translation: "(form or system) of government in which all the people participate in governing through their representatives; people's government"
+                aiFallback:
+                  value:
+                    success: true
+                    message: Translation successful
+                    data:
+                      word: pencilan
+                      translation: outlier
+                      from: id
+                      to: en
+                      provider: ai
+                      entries:
+                        - headword: pencilan
+                          definitions:
+                            - wordClass: "n[Nomina]"
+                              description: "Data yang menyimpang jauh dari nilai-nilai lain dalam sekumpulan data."
+                              translation: "A data point that differs greatly from other values in a dataset."
+                      aiGenerated: true
+                      notice: Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI.
         "400":
           $ref: "#/components/responses/ValidationError"
         "404":
@@ -1656,7 +1720,7 @@ components:
           items:
             $ref: "#/components/schemas/Definition"
     KbbiSearchResult:
-      description: Data returned from a KBBI word search.
+      description: Data returned from a KBBI word search or labeled AI fallback.
       type: object
       required:
         - word
@@ -1675,8 +1739,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Entry"
+        aiGenerated:
+          type: boolean
+          const: true
+          description: Present only when AI generated the definition after a KBBI source miss.
+        notice:
+          type: string
+          description: Present with aiGenerated to explain that the entry was not found on the configured source and the definition was generated by AI.
     TranslatedDefinition:
-      description: One KBBI definition entry with its translated result.
+      description: One KBBI or AI definition entry with its translated result.
       allOf:
         - $ref: "#/components/schemas/Definition"
         - type: object
@@ -1686,7 +1757,7 @@ components:
             translation:
               type: string
     TranslatedEntry:
-      description: KBBI headword and its definitions with translated meanings.
+      description: KBBI or AI headword and its definitions with translated meanings.
       type: object
       required:
         - headword
@@ -1699,7 +1770,7 @@ components:
           items:
             $ref: "#/components/schemas/TranslatedDefinition"
     TranslateResult:
-      description: Data returned when translating a KBBI word's meanings.
+      description: Data returned when translating a KBBI word's meanings or a labeled AI definition fallback.
       type: object
       required:
         - word
@@ -1725,11 +1796,19 @@ components:
           enum:
             - google
             - lara
-          description: Translation provider that produced this result.
+            - ai
+          description: Translation provider that produced this result. AI is the final fallback for an AI-generated definition when Google and optional Lara translation fail.
         entries:
           type: array
           items:
             $ref: "#/components/schemas/TranslatedEntry"
+        aiGenerated:
+          type: boolean
+          const: true
+          description: Present only when AI generated the definition after a KBBI source miss. The provider field still names the translation provider.
+        notice:
+          type: string
+          description: Present with aiGenerated to explain that the entry was not found on the configured source and the definition was generated by AI.
     TopVisitedWord:
       description: One ranked word visit-count item.
       type: object

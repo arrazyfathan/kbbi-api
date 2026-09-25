@@ -104,7 +104,7 @@ Returns basic information about the API.
 
 ### 2. Search Word
 
-Searches for a specific word in the KBBI database.
+Searches for a specific word on the configured KBBI source. If no entry is found and an AI provider is configured, the API attempts to generate an Indonesian definition in the same response format.
 
 - **URL**: `/api/v1/search/:word`
 - **Method**: `GET`
@@ -142,8 +142,34 @@ Searches for a specific word in the KBBI database.
     }
     ```
   - `visitorCount` is `null` when `X-Visitor-Id` is missing or Supabase tracking is unavailable. Raw visitor IDs are not stored or logged.
+  - AI results add `data.aiGenerated: true` and `data.notice`. KBBI results keep the original response shape. A source miss does not establish the word's official KBBI registration status.
+  - **AI fallback example**:
+    ```json
+    {
+      "success": true,
+      "message": "Search successful",
+      "data": {
+        "word": "pencilan",
+        "visitorCount": null,
+        "entries": [
+          {
+            "headword": "pencilan",
+            "definitions": [
+              {
+                "wordClass": "n[Nomina]",
+                "description": "Data yang menyimpang jauh dari nilai-nilai lain dalam sekumpulan data."
+              }
+            ]
+          }
+        ],
+        "aiGenerated": true,
+        "notice": "Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI."
+      }
+    }
+    ```
 - **Error Responses**:
   - **404 Not Found**:
+    Returned when AI is unconfigured, unavailable, or cannot confidently define a word after a KBBI source miss.
     ```json
     {
       "success": false,
@@ -161,6 +187,8 @@ Searches for a specific word in the KBBI database.
       "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
+  - **429 Too Many Requests**: A configured AI fallback shares the AI rate limit with AI word study.
+  - **502/504 Upstream Error**: Returned when the configured KBBI source fails or times out before a fallback can run.
 
 ### 3. Top Visited Words
 
@@ -408,7 +436,7 @@ Returns one Indonesian figure from a Wikiquote slug.
 
 ### 10. Translate Word Meanings
 
-Looks up a word in KBBI and translates the word itself and every one of its meanings from Indonesian (`id`) to a target language. Google Translate is used first, with Lara Translate as an optional configured fallback. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
+Looks up a word in KBBI and translates the word itself and every one of its meanings from Indonesian (`id`) to a target language. If the configured KBBI source has no entry, a configured AI provider may generate a definition to translate. Google Translate is used first, with Lara Translate as an optional configured translation fallback. For an AI-generated definition, AI translation is the final fallback when the other translation providers fail. This is useful for a client-side toggle button that shows or hides the English translation of each meaning.
 
 - **URL**: `/api/v1/translate/:word`
 - **Method**: `GET`
@@ -445,9 +473,39 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
       }
     }
     ```
-  - `data.translation` is the word itself translated to the target language. `data.provider` identifies whether Google (`google`) or Lara (`lara`) produced the result. Each `definition` also gains a `translation` field alongside the original `description`. A `translation` may be an empty string when the translation provider returns no result for that text.
+  - `data.translation` is the word itself translated to the target language. `data.provider` identifies whether Google (`google`), Lara (`lara`), or AI (`ai`) produced the translation. Each `definition` also gains a `translation` field alongside the original `description`. A `translation` may be an empty string when Google or Lara returns no result for that text.
+  - When the definition comes from AI, `data.aiGenerated: true` and `data.notice` are added. `data.provider` independently identifies who translated it. KBBI entries retain the original response shape. A source miss does not establish the word's official KBBI registration status.
+  - **AI definition and translation fallback example** (wording may vary between requests):
+    ```json
+    {
+      "success": true,
+      "message": "Translation successful",
+      "data": {
+        "word": "pencilan",
+        "translation": "outlier",
+        "from": "id",
+        "to": "en",
+        "provider": "ai",
+        "entries": [
+          {
+            "headword": "pencilan",
+            "definitions": [
+              {
+                "wordClass": "n[Nomina]",
+                "description": "Data yang menyimpang jauh dari nilai-nilai lain dalam sekumpulan data.",
+                "translation": "A data point that differs greatly from other values in a dataset."
+              }
+            ]
+          }
+        ],
+        "aiGenerated": true,
+        "notice": "Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI."
+      }
+    }
+    ```
 - **Error Responses**:
   - **404 Not Found**:
+    Returned when no definition is available after a KBBI source miss and AI fallback is unconfigured or unable to define the word.
     ```json
     {
       "success": false,
@@ -456,8 +514,9 @@ Looks up a word in KBBI and translates the word itself and every one of its mean
       "requestId": "018f0b6f-23b9-7f47-a8d9-0f3d3a1f3c7a"
     }
     ```
-  - **502 Bad Gateway**: Returned when all configured translation providers are unavailable.
-  - **504 Gateway Timeout**: Returned when the final configured translation provider times out.
+  - **502 Bad Gateway**: Returned when all applicable translation providers are unavailable.
+  - **504 Gateway Timeout**: Returned when the final applicable translation provider times out.
+  - **429 Too Many Requests**: AI fallback requests share the AI rate limit with other AI endpoints.
 
 ### 11. List AI Providers
 

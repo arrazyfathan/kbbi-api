@@ -5,6 +5,7 @@ import { AppDependencies } from "../src/app-dependencies";
 import HealthController from "../src/features/health/health.controller";
 import IndonesianFigureController from "../src/features/figures/indonesian-figure.controller";
 import KbbiController from "../src/features/kbbi/kbbi.controller";
+import { AiDefinitionService } from "../src/features/kbbi/ai-definition.service";
 import ProverbController from "../src/features/proverbs/proverb.controller";
 import TranslateController from "../src/features/translate/translate.controller";
 import WordController from "../src/features/word-visits/word.controller";
@@ -200,6 +201,48 @@ describe("Express app integration", () => {
     });
   });
 
+  it.each(["/search", "/api/v1/search"])("returns a labeled AI definition through %s", async (basePath) => {
+    testServices.kbbiService.search.mockResolvedValueOnce(null);
+    testServices.aiDefinitionProvider.generate.mockResolvedValueOnce({
+      found: true,
+      definitions: [{ wordClass: "n[Nomina]", description: "makna yang dihasilkan oleh AI" }],
+    });
+    testServices.wordVisitService.trackWordVisit.mockResolvedValueOnce(3);
+
+    const response = await request(createApp()).get(`${basePath}/KataBaru`).set("X-Visitor-Id", "client-1");
+
+    expect(response.status).toBe(200);
+    expect(testServices.aiDefinitionProvider.generate).toHaveBeenCalledWith("KataBaru");
+    expect(testServices.wordVisitService.trackWordVisit).toHaveBeenCalledWith("katabaru", "client-1");
+    expect(response.body).toEqual({
+      success: true,
+      message: "Search successful",
+      data: {
+        word: "katabaru",
+        visitorCount: 3,
+        entries: [
+          {
+            headword: "katabaru",
+            definitions: [{ wordClass: "n[Nomina]", description: "makna yang dihasilkan oleh AI" }],
+          },
+        ],
+        aiGenerated: true,
+        notice: "Entri tidak ditemukan pada sumber KBBI yang digunakan. Definisi ini dihasilkan oleh AI.",
+      },
+    });
+  });
+
+  it("keeps 404 when AI cannot define a missing word", async () => {
+    testServices.kbbiService.search.mockResolvedValueOnce(null);
+    testServices.aiDefinitionProvider.generate.mockRejectedValueOnce(new Error("provider unavailable"));
+
+    const response = await request(createApp()).get("/search/unknownword");
+
+    expect(response.status).toBe(404);
+    expect(response.body).toMatchObject({ success: false, message: "Word not found", code: "NOT_FOUND" });
+    expect(testServices.wordVisitService.trackWordVisit).not.toHaveBeenCalled();
+  });
+
   it("preserves client-provided request IDs in response headers", async () => {
     testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([]);
 
@@ -211,11 +254,17 @@ describe("Express app integration", () => {
 
   it("translates a word through the real route and middleware stack", async () => {
     testServices.translateService.translate.mockResolvedValueOnce(createTranslateResult());
+    testServices.translateService.lookup.mockResolvedValueOnce(createKbbiTranslateEntries());
 
     const response = await request(createApp()).get("/translate/Demokrasi?to=en");
 
     expect(response.status).toBe(200);
-    expect(testServices.translateService.translate).toHaveBeenCalledWith("Demokrasi", "en");
+    expect(testServices.translateService.translate).toHaveBeenCalledWith(
+      "Demokrasi",
+      "en",
+      createKbbiTranslateEntries(),
+      expect.any(String),
+    );
     expect(response.body).toEqual({
       success: true,
       message: "Translation successful",
@@ -275,6 +324,7 @@ describe("Express app integration", () => {
       quotes: ["Bangsa yang besar adalah bangsa yang menghargai jasa pahlawannya"],
     });
     testServices.translateService.translate.mockResolvedValueOnce(createTranslateResult());
+    testServices.translateService.lookup.mockResolvedValueOnce(createKbbiTranslateEntries());
 
     const app = createApp();
 
@@ -299,7 +349,12 @@ describe("Express app integration", () => {
       includeDetails: false,
     });
     expect(testServices.indonesianFigureService.detail).toHaveBeenCalledWith("Soekarno");
-    expect(testServices.translateService.translate).toHaveBeenCalledWith("Demokrasi", "en");
+    expect(testServices.translateService.translate).toHaveBeenCalledWith(
+      "Demokrasi",
+      "en",
+      createKbbiTranslateEntries(),
+      expect.any(String),
+    );
   });
 
   it("returns validation errors without calling the external-backed service", async () => {
@@ -374,6 +429,9 @@ function createTestServices() {
     kbbiService: {
       search: vi.fn(),
     },
+    aiDefinitionProvider: {
+      generate: vi.fn(),
+    },
     proverbService: {
       list: vi.fn(),
       search: vi.fn(),
@@ -381,6 +439,8 @@ function createTestServices() {
     },
     translateService: {
       translate: vi.fn(),
+      lookup: vi.fn(),
+      isAiConfigured: vi.fn(() => false),
     },
     wordVisitService: {
       getTopVisitedWords: vi.fn(),
@@ -415,7 +475,11 @@ function createTestDependencies(services: ReturnType<typeof createTestServices>)
     controllers: {
       healthController: new HealthController(services.healthService as unknown as HealthService),
       indonesianFigureController: new IndonesianFigureController(services.indonesianFigureService),
-      kbbiController: new KbbiController(services.kbbiService, services.wordVisitService),
+      kbbiController: new KbbiController(
+        services.kbbiService,
+        services.wordVisitService,
+        new AiDefinitionService(services.aiDefinitionProvider),
+      ),
       proverbController: new ProverbController(services.proverbService),
       translateController: new TranslateController(services.translateService),
       wordController: new WordController(services.wordVisitService),
@@ -444,6 +508,10 @@ function createTranslateResult() {
       },
     ],
   };
+}
+
+function createKbbiTranslateEntries() {
+  return [{ headword: "demokrasi", definitions: [{ wordClass: "n[Nomina]", description: "pemerintahan rakyat" }] }];
 }
 
 function createPaginatedProverbResult() {

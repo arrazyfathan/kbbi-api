@@ -2,8 +2,12 @@ import config from "../../config";
 import { getScraperHtml, isUpstreamHttpError } from "../../lib/http-client";
 import logger from "../../lib/logger";
 import { TtlCache } from "../../lib/ttl-cache";
+import { upstreamUnavailableError } from "../../lib/api-error";
+import { AI_DEFINITION_NOTICE } from "../kbbi/ai-definition.service";
+import type { AiDefinitionService } from "../kbbi/ai-definition.service";
 import type { KbbiService } from "../kbbi/kbbi.service";
 import type { Entry } from "../kbbi/kbbi.types";
+import type { AiTranslationProvider } from "./ai-translate.client";
 import { parseGoogleTranslateResponse } from "./google-translate.parser";
 import type { GoogleTranslateSegment } from "./google-translate.parser";
 import { LaraTranslateClient } from "./lara-translate.client";
@@ -29,6 +33,8 @@ export class TranslateService {
   private readonly cacheTtlMs: number;
   private readonly cache: TtlCache<string, TranslateResult>;
   private readonly laraProvider?: LaraTranslationProvider;
+  private readonly aiDefinitionService?: Pick<AiDefinitionService, "generate" | "isConfigured">;
+  private readonly aiTranslationProvider?: AiTranslationProvider;
 
   constructor(
     private readonly kbbiService: Pick<KbbiService, "search">,
@@ -38,6 +44,8 @@ export class TranslateService {
       timeoutMs?: number;
       cacheTtlMs?: number;
       laraProvider?: LaraTranslationProvider | null;
+      aiDefinitionService?: Pick<AiDefinitionService, "generate" | "isConfigured">;
+      aiTranslationProvider?: AiTranslationProvider;
     } = {},
   ) {
     this.now = options.now || Date.now;
@@ -46,6 +54,8 @@ export class TranslateService {
     this.cacheTtlMs = options.cacheTtlMs ?? config.cache.translateTtlMs;
     this.laraProvider =
       options.laraProvider === undefined ? createConfiguredLaraProvider() : (options.laraProvider ?? undefined);
+    this.aiDefinitionService = options.aiDefinitionService;
+    this.aiTranslationProvider = options.aiTranslationProvider;
     this.cache = new TtlCache<string, TranslateResult>({
       ttlMs: this.cacheTtlMs,
       now: () => this.now(),
@@ -53,64 +63,99 @@ export class TranslateService {
   }
 
   /**
-   * Translate a KBBI word and every one of its definitions from Indonesian to
-   * the target language.
+   * Translate a word and every one of its definitions from Indonesian to the target language.
    * @param word The word to translate
    * @param target The target ISO 639-1/639-2 language code
-   * @returns Translated word and entries or null when the word is not found in KBBI
+   * @returns Translated word and entries or null when no definition is available
    */
-  async translate(word: string, target = DEFAULT_TARGET_LANGUAGE): Promise<TranslateResult | null> {
+  async translate(
+    word: string,
+    target = DEFAULT_TARGET_LANGUAGE,
+    preloadedEntries?: Entry[] | null,
+    requestId?: string,
+  ): Promise<TranslateResult | null> {
     const normalizedWord = normalizeWord(word);
-    const entries = await this.kbbiService.search(normalizedWord);
-
-    if (!entries) {
-      return null;
-    }
+    const kbbiEntries = preloadedEntries === undefined ? await this.lookup(normalizedWord) : preloadedEntries;
+    const aiGenerated = !kbbiEntries;
 
     const cacheKey = this.getCacheKey(normalizedWord, target);
     const cached = this.cache.get(cacheKey);
-    this.logCache(cacheKey, Boolean(cached));
+    const usableCache = cached && Boolean(cached.aiGenerated) === aiGenerated ? cached : undefined;
+    this.logCache(cacheKey, Boolean(usableCache));
 
-    if (cached) {
-      return cached;
+    if (usableCache) {
+      return usableCache;
     }
 
-    const translations = await this.translateAll(normalizedWord, entries, target);
-    const result = this.buildResult(normalizedWord, target, entries, translations);
+    const entries = kbbiEntries ?? (await this.aiDefinitionService?.generate(normalizedWord, requestId));
+    if (!entries) return null;
+
+    const translations = await this.translateAll(normalizedWord, entries, target, aiGenerated);
+    const result = this.buildResult(normalizedWord, target, entries, translations, aiGenerated);
 
     this.cache.set(cacheKey, result);
 
     return result;
   }
 
-  private async translateAll(word: string, entries: Entry[], target: string): Promise<WordAndDefinitionTranslations> {
+  lookup(word: string): Promise<Entry[] | null> {
+    return this.kbbiService.search(normalizeWord(word));
+  }
+
+  isAiConfigured(): boolean {
+    return this.aiDefinitionService?.isConfigured() ?? false;
+  }
+
+  private async translateAll(
+    word: string,
+    entries: Entry[],
+    target: string,
+    aiGenerated: boolean,
+  ): Promise<WordAndDefinitionTranslations> {
     const descriptions = entries.flatMap((entry) => entry.definitions.map((definition) => definition.description));
     const texts = [word, ...descriptions];
 
     try {
       return await this.translateWithGoogle(word, descriptions, texts, target);
     } catch (googleError) {
-      if (!this.laraProvider) {
-        throw googleError;
-      }
-
-      logger.warn(
-        { err: googleError, event: "google_translate_failed", count: texts.length },
-        "Google Translate failed, falling back to Lara Translate",
-      );
-
-      try {
-        const translations = await this.laraProvider.translate(texts, target);
-
-        return { word: translations[0] ?? word, definitions: translations.slice(1), provider: "lara" };
-      } catch (laraError) {
+      if (this.laraProvider) {
         logger.warn(
-          { err: laraError, event: "lara_translate_failed", count: texts.length },
-          "Lara Translate fallback failed",
+          { err: googleError, event: "google_translate_failed", count: texts.length },
+          "Google Translate failed, falling back to Lara Translate",
         );
-        throw laraError;
+
+        try {
+          const translations = await this.laraProvider.translate(texts, target);
+
+          return { word: translations[0] ?? word, definitions: translations.slice(1), provider: "lara" };
+        } catch (laraError) {
+          logger.warn(
+            { err: laraError, event: "lara_translate_failed", count: texts.length },
+            "Lara Translate fallback failed",
+          );
+          return this.translateWithAiOrThrow(texts, target, aiGenerated, laraError);
+        }
       }
+
+      return this.translateWithAiOrThrow(texts, target, aiGenerated, googleError);
     }
+  }
+
+  private async translateWithAiOrThrow(
+    texts: string[],
+    target: string,
+    aiGenerated: boolean,
+    previousError: unknown,
+  ): Promise<WordAndDefinitionTranslations> {
+    if (!aiGenerated || !this.aiTranslationProvider) throw previousError;
+
+    logger.info({ event: "ai_translate_fallback", count: texts.length }, "Trying AI translation fallback");
+    const translations = await this.aiTranslationProvider.translate(texts, target);
+    if (translations.length !== texts.length || translations.some((translation) => !translation.trim())) {
+      throw upstreamUnavailableError("AI translation returned an invalid result");
+    }
+
+    return { word: translations[0], definitions: translations.slice(1), provider: "ai" };
   }
 
   private async translateWithGoogle(
@@ -199,6 +244,7 @@ export class TranslateService {
     target: string,
     entries: Entry[],
     translations: WordAndDefinitionTranslations,
+    aiGenerated: boolean,
   ): TranslateResult {
     return {
       word,
@@ -207,6 +253,7 @@ export class TranslateService {
       to: target,
       provider: translations.provider,
       entries: this.buildTranslatedEntries(entries, translations.definitions),
+      ...(aiGenerated ? { aiGenerated: true as const, notice: AI_DEFINITION_NOTICE } : {}),
     };
   }
 

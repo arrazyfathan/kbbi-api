@@ -1,6 +1,6 @@
 import type { Definition } from "../kbbi/kbbi.types";
 
-export type TranslationProvider = "google" | "lara";
+export type TranslationProvider = "google" | "lara" | "ai";
 
 export interface TranslatedDefinition extends Definition {
   translation: string;
@@ -18,4 +18,6 @@ export interface TranslateResult {
   to: string;
   provider: TranslationProvider;
   entries: TranslatedEntry[];
+  aiGenerated?: true;
+  notice?: string;
 }

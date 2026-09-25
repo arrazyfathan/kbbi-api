@@ -27,7 +27,7 @@ describe("KbbiController.search", () => {
       headers: { "x-visitor-id": "mobile-visitor-1" },
     });
 
-    await controller.search(req, res);
+    await runSearch(controller, req, res);
 
     expect(kbbiService.search).toHaveBeenCalledWith("Demokrasi");
     expect(wordVisitService.trackWordVisit).toHaveBeenCalledWith("demokrasi", "mobile-visitor-1");
@@ -62,7 +62,7 @@ describe("KbbiController.search", () => {
       headers: { "x-visitor-id": "mobile-visitor-1" },
     });
 
-    await controller.search(req, res);
+    await runSearch(controller, req, res);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(body.value.data.visitorCount).toBeNull();
@@ -81,7 +81,7 @@ describe("KbbiController.search", () => {
       params: { word: "ajar" },
     });
 
-    await controller.search(req, res);
+    await runSearch(controller, req, res);
 
     expect(wordVisitService.trackWordVisit).toHaveBeenCalledWith("ajar", undefined);
     expect(res.status).toHaveBeenCalledWith(200);
@@ -96,7 +96,7 @@ describe("KbbiController.search", () => {
       headers: { "x-visitor-id": "mobile-visitor-1" },
     });
 
-    await expect(controller.search(req, res)).rejects.toMatchObject({
+    await expect(runSearch(controller, req, res)).rejects.toMatchObject({
       statusCode: 404,
       code: API_ERROR_CODES.NOT_FOUND,
       message: "Word not found",
@@ -111,7 +111,7 @@ describe("KbbiController.search", () => {
       params: { word: "   " },
     });
 
-    await expect(controller.search(req, res)).rejects.toMatchObject({
+    await expect(runSearch(controller, req, res)).rejects.toMatchObject({
       statusCode: 400,
       code: API_ERROR_CODES.VALIDATION_ERROR,
       message: "Parameter 'word' is required and must be a string",
@@ -137,6 +137,7 @@ function createRequestResponse(input: { params: Record<string, string>; headers?
     headers: input.headers || {},
   } as any;
   const res = {
+    locals: {},
     status: vi.fn().mockReturnThis(),
     json: vi.fn((value: any) => {
       body.value = value;
@@ -145,4 +146,9 @@ function createRequestResponse(input: { params: Record<string, string>; headers?
   } as any;
 
   return { req, res, body };
+}
+
+async function runSearch(controller: KbbiController, req: any, res: any): Promise<void> {
+  await controller.lookup(req, res, vi.fn());
+  await controller.search(req, res);
 }
