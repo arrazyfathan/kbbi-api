@@ -4,6 +4,8 @@ import {
   AiProviderError,
   buildOpenAiClientOptions,
   buildWordStudyUserInput,
+  ChatWordStudyProvider,
+  createOpenAiCompatibleWordStudyProvider,
   OpenAiWordStudyProvider,
   WORD_STUDY_INSTRUCTIONS,
   WORD_STUDY_JSON_SCHEMA,
@@ -34,6 +36,50 @@ function createProvider(response: object) {
 }
 
 describe("OpenAiWordStudyProvider", () => {
+  it("uses Chat Completions for Vikey, whose documented API does not include Responses", () => {
+    expect(
+      createOpenAiCompatibleWordStudyProvider("Vikey", "key", ["model"], "model", 1000, "https://api.vikey.ai/v1"),
+    ).toBeInstanceOf(ChatWordStudyProvider);
+  });
+
+  it("uses Chat Completions for Nara's configured model", () => {
+    expect(
+      createOpenAiCompatibleWordStudyProvider(
+        "Nara",
+        "key",
+        ["laguna-s-2.1"],
+        "laguna-s-2.1",
+        1000,
+        "https://router.bynara.id/v1",
+      ),
+    ).toBeInstanceOf(ChatWordStudyProvider);
+  });
+
+  it("parses a complete Vikey chat response and records its token usage", async () => {
+    const content = { explanation: "x", examples: ["a", "b"], usageNotes: ["c", "d"], relatedWords: ["e", "f", "g"] };
+    const create = vi.fn().mockResolvedValue({
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify(content), refusal: null } }],
+      usage: { prompt_tokens: 12, completion_tokens: 34 },
+    });
+    const onUsage = vi.fn();
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const provider = new ChatWordStudyProvider("Vikey", "model", ["model"], 1234, client, onUsage);
+    await expect(provider.generate(input, "model")).resolves.toEqual(content);
+    expect(onUsage).toHaveBeenCalledWith(12, 34);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ model: "model", messages: expect.any(Array) }), {
+      timeout: 1234,
+    });
+  });
+
+  it("rejects incomplete Vikey chat output", async () => {
+    const create = vi.fn().mockResolvedValue({
+      choices: [{ finish_reason: "length", message: { content: "{}" } }],
+    });
+    const client = { chat: { completions: { create } } } as unknown as OpenAI;
+    const provider = new ChatWordStudyProvider("Vikey", "model", ["model"], 1234, client);
+    await expect(provider.generate(input, "model")).rejects.toEqual(new AiProviderError("malformed"));
+  });
+
   it("builds SDK options with an optional OpenAI-compatible base URL", () => {
     expect(buildOpenAiClientOptions("key")).toEqual({ apiKey: "key" });
     expect(buildOpenAiClientOptions("key", "https://compatible.example.com/v1")).toEqual({

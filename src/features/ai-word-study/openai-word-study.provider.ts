@@ -40,6 +40,7 @@ export class AiProviderError extends Error {
 }
 
 type ResponsesClient = Pick<OpenAI, "responses">;
+type ChatClient = Pick<OpenAI, "chat">;
 
 export class OpenAiWordStudyProvider implements WordStudyProvider {
   constructor(
@@ -95,12 +96,58 @@ export class OpenAiWordStudyProvider implements WordStudyProvider {
   }
 }
 
+/** Use Chat Completions for providers or models that reject structured Responses requests. */
+export class ChatWordStudyProvider implements WordStudyProvider {
+  constructor(
+    readonly name: string,
+    readonly defaultModel: string,
+    readonly models: readonly string[],
+    private readonly timeoutMs: number,
+    private readonly client: ChatClient,
+    private readonly onUsage?: (inputTokens: number, outputTokens: number) => void,
+  ) {}
+
+  async generate(request: WordStudyRequest, model: string): Promise<unknown> {
+    try {
+      const response = await this.client.chat.completions.create(
+        {
+          model,
+          messages: [
+            {
+              role: "system",
+              content: `${WORD_STUDY_INSTRUCTIONS}\nKembalikan hanya objek JSON dengan properti explanation (string), examples (array string minimal 2), usageNotes (array string minimal 2), dan relatedWords (array string minimal 3).`,
+            },
+            { role: "user", content: buildWordStudyUserInput(request) },
+          ],
+        },
+        { timeout: this.timeoutMs },
+      );
+      if (response.usage) this.onUsage?.(response.usage.prompt_tokens, response.usage.completion_tokens);
+      const choice = response.choices[0];
+      if (choice?.message?.refusal) throw new AiProviderError("refusal");
+      const content = choice?.message?.content?.trim();
+      if (!content || choice.finish_reason !== "stop") throw new AiProviderError("malformed");
+      try {
+        return JSON.parse(content);
+      } catch {
+        throw new AiProviderError("malformed");
+      }
+    } catch (error) {
+      if (error instanceof AiProviderError) throw error;
+      if (error instanceof OpenAI.APIConnectionTimeoutError) throw new AiProviderError("timeout");
+      if (error instanceof OpenAI.AuthenticationError) throw new AiProviderError("authentication");
+      if (error instanceof OpenAI.RateLimitError) throw new AiProviderError("rate_limit");
+      throw new AiProviderError("unavailable");
+    }
+  }
+}
+
 export function createOpenAiWordStudyProvider(
   apiKey: string,
   model: string,
   timeoutMs: number,
   baseUrl?: string,
-): OpenAiWordStudyProvider {
+): WordStudyProvider {
   return createOpenAiCompatibleWordStudyProvider("openai", apiKey, [model], model, timeoutMs, baseUrl);
 }
 
@@ -112,15 +159,12 @@ export function createOpenAiCompatibleWordStudyProvider(
   timeoutMs: number,
   baseUrl?: string,
   onUsage?: (inputTokens: number, outputTokens: number) => void,
-): OpenAiWordStudyProvider {
-  return new OpenAiWordStudyProvider(
-    name,
-    defaultModel,
-    models,
-    timeoutMs,
-    new OpenAI(buildOpenAiClientOptions(apiKey, baseUrl)),
-    onUsage,
-  );
+): WordStudyProvider {
+  const client = new OpenAI(buildOpenAiClientOptions(apiKey, baseUrl));
+  if (baseUrl && ["api.vikey.ai", "router.bynara.id"].includes(new URL(baseUrl).hostname.toLowerCase())) {
+    return new ChatWordStudyProvider(name, defaultModel, models, timeoutMs, client, onUsage);
+  }
+  return new OpenAiWordStudyProvider(name, defaultModel, models, timeoutMs, client, onUsage);
 }
 
 export function buildOpenAiClientOptions(apiKey: string, baseUrl?: string): ConstructorParameters<typeof OpenAI>[0] {

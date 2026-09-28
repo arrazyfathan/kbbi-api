@@ -549,7 +549,7 @@ With no configured provider, `defaultProvider` is `null` and `providers` is an e
 
 Generates one-shot study material from the KBBI entries already displayed by the client. Requests are not cached, and there is no unversioned alias.
 
-The backend supports multiple server-configured providers that implement the OpenAI-compatible `/responses` endpoint and strict JSON Schema Structured Outputs. API keys and base URLs stay on the server; clients can select only advertised provider IDs and models.
+The backend supports multiple server-configured providers. Most use the OpenAI-compatible `/responses` endpoint and strict JSON Schema Structured Outputs. Vikey (`https://api.vikey.ai/v1`) and Nara (`https://router.bynara.id/v1`) use Chat Completions; their JSON output is validated against the same server-side schema. API keys and base URLs stay on the server; clients can select only advertised provider IDs and models.
 
 The legacy `OPENAI_API_KEY`, `OPENAI_MODEL`, and optional `OPENAI_BASE_URL` settings remain supported as provider `openai`. Add other providers with single-line JSON and choose a default:
 

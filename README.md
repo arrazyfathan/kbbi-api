@@ -125,7 +125,7 @@ SUPABASE_ANON_KEY=your-anon-key
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
 
-Every configured provider must implement the Responses API at `/responses` and support strict JSON Schema Structured Outputs. Include the provider's version prefix (commonly `/v1`) in each base URL when required. Providers that only implement Chat Completions are not compatible with this endpoint. Clients can inspect the safe allowlist with `GET /api/v1/ai/providers`, then pass optional `provider` and `model` fields to `POST /api/v1/ai/word-study`; arbitrary client-supplied URLs and credentials are not accepted.
+Most configured providers must implement the Responses API at `/responses` and support strict JSON Schema Structured Outputs. Vikey (`https://api.vikey.ai/v1`) and Nara (`https://router.bynara.id/v1`) use Chat Completions; their generated JSON is validated by the same server-side word-study schema. Include the provider's version prefix (commonly `/v1`) in each base URL when required. Clients can inspect the safe allowlist with `GET /api/v1/ai/providers`, then pass optional `provider` and `model` fields to `POST /api/v1/ai/word-study`; arbitrary client-supplied URLs and credentials are not accepted.
 
 ### AI Provider Setup
 
