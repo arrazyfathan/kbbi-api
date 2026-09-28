@@ -362,6 +362,21 @@ test/
 
 The repository includes `vercel.json` configured to route all requests to `src/server.ts` with `@vercel/node`.
 
+### Separate admin back office
+
+The sibling `kbbi-admin` project owns the admin UI and Firebase topic campaigns. Apply
+`supabase/migrations/20260927000000_admin_backoffice.sql` before using it. Configure
+`SUPABASE_SERVICE_ROLE_KEY` on the API so it can read enabled providers from the
+service-role-only database function and record AI and word-search usage. Existing
+`OPENAI_*` and `AI_PROVIDERS` values can be imported once with
+`npm run admin:import-providers` while the provider table is empty; after import,
+database settings are authoritative. Runtime provider settings are cached for up
+to 15 seconds per API instance. Do not expose the service role key to clients.
+
+The admin repo contains its own setup instructions, including the Supabase Auth
+allowlist and Firebase service account configuration. The API continues to work
+without the admin migration by using its environment-configured providers.
+
 For production deployment:
 
 1. Configure the environment variables in the hosting provider.

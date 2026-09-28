@@ -62,6 +62,7 @@ export class OpenAiDefinitionProvider implements AiDefinitionProvider {
     private readonly model: string,
     private readonly timeoutMs: number,
     baseUrl?: string,
+    private readonly onUsage?: (inputTokens: number, outputTokens: number) => void,
   ) {
     this.client = new OpenAI({ apiKey, ...(baseUrl ? { baseURL: baseUrl } : {}) });
   }
@@ -84,6 +85,7 @@ export class OpenAiDefinitionProvider implements AiDefinitionProvider {
       },
       { timeout: this.timeoutMs },
     );
+    if (response.usage) this.onUsage?.(response.usage.input_tokens, response.usage.output_tokens);
 
     if (response.status !== "completed" || hasRefusal(response.output) || !response.output_text?.trim()) {
       throw new Error("AI definition response was incomplete");

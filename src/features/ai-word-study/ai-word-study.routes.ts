@@ -5,7 +5,7 @@ import type AiWordStudyController from "./ai-word-study.controller";
 
 export function createAiWordStudyRouter(controller: AiWordStudyController): Router {
   const router = Router();
-  router.get("/ai/providers", controller.providers);
+  router.get("/ai/providers", asyncHandler(controller.providers));
   router.post("/ai/word-study", aiRateLimiter, asyncHandler(controller.generate));
   return router;
 }

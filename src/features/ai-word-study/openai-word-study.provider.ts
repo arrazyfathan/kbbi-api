@@ -48,6 +48,7 @@ export class OpenAiWordStudyProvider implements WordStudyProvider {
     readonly models: readonly string[],
     private readonly timeoutMs: number,
     private readonly client: ResponsesClient,
+    private readonly onUsage?: (inputTokens: number, outputTokens: number) => void,
   ) {}
 
   async generate(request: WordStudyRequest, model: string): Promise<unknown> {
@@ -69,6 +70,7 @@ export class OpenAiWordStudyProvider implements WordStudyProvider {
         },
         { timeout: this.timeoutMs },
       );
+      if (response.usage) this.onUsage?.(response.usage.input_tokens, response.usage.output_tokens);
 
       if (hasRefusal(response.output)) {
         throw new AiProviderError("refusal");
@@ -109,6 +111,7 @@ export function createOpenAiCompatibleWordStudyProvider(
   defaultModel: string,
   timeoutMs: number,
   baseUrl?: string,
+  onUsage?: (inputTokens: number, outputTokens: number) => void,
 ): OpenAiWordStudyProvider {
   return new OpenAiWordStudyProvider(
     name,
@@ -116,6 +119,7 @@ export function createOpenAiCompatibleWordStudyProvider(
     models,
     timeoutMs,
     new OpenAI(buildOpenAiClientOptions(apiKey, baseUrl)),
+    onUsage,
   );
 }
 
