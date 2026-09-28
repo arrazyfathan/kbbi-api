@@ -5,6 +5,7 @@ import { notFoundError } from "../../lib/api-error";
 import type { ApiResponse } from "../../lib/api-response.types";
 import { getRequestId } from "../../lib/request-id";
 import { WordVisitService } from "../word-visits/word-visit.service";
+import { recordWordSearch } from "../word-visits/word-search-analytics";
 import { AI_DEFINITION_NOTICE, AiDefinitionService } from "./ai-definition.service";
 import { KbbiService } from "./kbbi.service";
 import type { Entry, KbbiSearchResult } from "./kbbi.types";
@@ -24,7 +25,13 @@ export default class KbbiController {
 
   lookup = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { word, normalizedWord } = parseWordParam(req.params.word);
-    const entries = await this.kbbiService.search(word);
+    let entries: Entry[] | null;
+    try {
+      entries = await this.kbbiService.search(word);
+    } catch (error) {
+      await recordWordSearch(normalizedWord, { sourceMiss: false, aiGenerated: false, notFound: false, error: true });
+      throw error;
+    }
     res.locals.searchLookup = { word, normalizedWord, entries } satisfies SearchLookup;
     next();
   };
@@ -40,8 +47,16 @@ export default class KbbiController {
     const results = entries ?? (await this.aiDefinitionService.generate(word, getRequestId(req)));
 
     if (!results) {
+      await recordWordSearch(normalizedWord, { sourceMiss: true, aiGenerated: false, notFound: true, error: false });
       throw notFoundError("Word not found");
     }
+
+    await recordWordSearch(normalizedWord, {
+      sourceMiss: aiGenerated,
+      aiGenerated,
+      notFound: false,
+      error: false,
+    });
 
     const visitorCount = await this.trackVisitorCount(normalizedWord, getVisitorId(req));
 

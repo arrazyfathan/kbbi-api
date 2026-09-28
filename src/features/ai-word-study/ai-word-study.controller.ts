@@ -2,10 +2,12 @@ import { Request, Response } from "express";
 import type { ApiResponse } from "../../lib/api-response.types";
 import { getRequestId } from "../../lib/request-id";
 import { parseWordStudyRequest } from "./ai-word-study.schema";
-import type { AiWordStudyService } from "./ai-word-study.service";
+import type { ManagedAiWordStudyService } from "./managed-ai";
 import type { WordStudyProviderCatalog, WordStudyResult } from "./ai-word-study.types";
 
-export type WordStudyGenerationService = Pick<AiWordStudyService, "generate" | "listProviders">;
+export type WordStudyGenerationService = Pick<ManagedAiWordStudyService, "generate"> & {
+  listProviders: () => WordStudyProviderCatalog | Promise<WordStudyProviderCatalog>;
+};
 
 export default class AiWordStudyController {
   constructor(private readonly service: WordStudyGenerationService) {}
@@ -16,7 +18,7 @@ export default class AiWordStudyController {
     res.status(200).json({ success: true, message: "Word study generated", data });
   };
 
-  providers = (_req: Request, res: Response<ApiResponse<WordStudyProviderCatalog>>): void => {
-    res.status(200).json({ success: true, message: "AI providers fetched", data: this.service.listProviders() });
+  providers = async (_req: Request, res: Response<ApiResponse<WordStudyProviderCatalog>>): Promise<void> => {
+    res.status(200).json({ success: true, message: "AI providers fetched", data: await this.service.listProviders() });
   };
 }
