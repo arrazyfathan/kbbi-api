@@ -16,8 +16,7 @@ async function main() {
       p_enabled: true,
       p_is_default: provider.id === config.defaultAiProvider,
       p_daily_request_limit: null,
-      p_input_price_per_million: null,
-      p_output_price_per_million: null,
+      p_model_prices: {},
       p_actor_id: null,
     });
     if (error) throw error;
