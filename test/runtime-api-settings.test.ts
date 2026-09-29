@@ -10,7 +10,9 @@ vi.mock("../src/config", () => ({
   default: {
     upstream: { openAiTimeoutMs: 30000 },
     rateLimit: { ai: { windowMs: 900000, max: 10 } },
-    get supabaseServiceRoleKey() { return mocks.serviceRoleKey; },
+    get supabaseServiceRoleKey() {
+      return mocks.serviceRoleKey;
+    },
   },
 }));
 vi.mock("../src/config/supabase", () => ({ supabase: { rpc: mocks.rpc } }));

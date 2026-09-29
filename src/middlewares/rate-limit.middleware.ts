@@ -65,9 +65,13 @@ let appliedAiSettings: RuntimeApiSettings | undefined;
 export async function aiRateLimiter(req: Request, res: Response, next: NextFunction): Promise<void> {
   const settings = await getRuntimeApiSettings();
   if (!aiLimiter || !sameAiRateSettings(appliedAiSettings, settings)) {
-    const windowChanged = appliedAiSettings?.aiRateLimitWindowMs !== undefined &&
+    const windowChanged =
+      appliedAiSettings?.aiRateLimitWindowMs !== undefined &&
       appliedAiSettings.aiRateLimitWindowMs !== settings.aiRateLimitWindowMs;
-    aiLimiter = createRateLimiter({ windowMs: settings.aiRateLimitWindowMs, max: settings.aiRateLimitMax }, aiRateLimitStore);
+    aiLimiter = createRateLimiter(
+      { windowMs: settings.aiRateLimitWindowMs, max: settings.aiRateLimitMax },
+      aiRateLimitStore,
+    );
     if (windowChanged) {
       const resetAt = Date.now() + settings.aiRateLimitWindowMs;
       for (const client of new Set([...aiRateLimitStore.current.values(), ...aiRateLimitStore.previous.values()])) {
@@ -80,5 +84,7 @@ export async function aiRateLimiter(req: Request, res: Response, next: NextFunct
 }
 
 function sameAiRateSettings(previous: RuntimeApiSettings | undefined, current: RuntimeApiSettings): boolean {
-  return previous?.aiRateLimitWindowMs === current.aiRateLimitWindowMs && previous.aiRateLimitMax === current.aiRateLimitMax;
+  return (
+    previous?.aiRateLimitWindowMs === current.aiRateLimitWindowMs && previous.aiRateLimitMax === current.aiRateLimitMax
+  );
 }
