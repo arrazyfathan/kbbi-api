@@ -1,7 +1,16 @@
 import { NextFunction, Request, RequestHandler, Response } from "express";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { API_ERROR_CODES } from "../src/lib/api-error";
-import { createRateLimiter } from "../src/middlewares/rate-limit.middleware";
+
+const runtimeSettings = vi.hoisted(() => ({
+  current: { openaiTimeoutMs: 30000, aiRateLimitWindowMs: 60000, aiRateLimitMax: 2 },
+}));
+
+vi.mock("../src/config/runtime-api-settings", () => ({
+  getRuntimeApiSettings: async () => runtimeSettings.current,
+}));
+
+import { createRateLimiter, aiRateLimiter } from "../src/middlewares/rate-limit.middleware";
 
 describe("rate limiting middleware", () => {
   it("allows requests within the configured limit", async () => {
@@ -51,6 +60,17 @@ describe("rate limiting middleware", () => {
 
     expect((await runRoute([globalLimiter], "/words/top")).statusCode).toBe(200);
     expect((await runRoute([globalLimiter], "/words/top")).statusCode).toBe(200);
+  });
+
+  it("applies updated AI limits while preserving active per-IP counters", async () => {
+    runtimeSettings.current = { openaiTimeoutMs: 30000, aiRateLimitWindowMs: 60000, aiRateLimitMax: 2 };
+    expect((await runMiddleware(aiRateLimiter, "/ai/word-study")).nextCalled).toBe(true);
+
+    runtimeSettings.current = { openaiTimeoutMs: 45000, aiRateLimitWindowMs: 120000, aiRateLimitMax: 1 };
+    const blocked = await runMiddleware(aiRateLimiter, "/ai/word-study");
+
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["ratelimit-policy"]?.toString()).toContain("w=120");
   });
 });
 

@@ -115,15 +115,17 @@ SUPABASE_ANON_KEY=your-anon-key
 | `OPENAI_BASE_URL`              | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                       |
 | `AI_PROVIDERS`                 | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                       |
 | `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used for missing-word fallbacks and when a word-study request omits `provider`.                       |
-| `OPENAI_TIMEOUT_MS`            | No                 | Positive integer OpenAI request timeout. Defaults to `30000` (`30` seconds).                                      |
-| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | Shared AI rate-limit window for word study and missing-word fallbacks. Defaults to `900000` (`15` minutes).       |
-| `AI_RATE_LIMIT_MAX`            | No                 | AI requests allowed per IP/window. Defaults to `10`.                                                              |
+| `OPENAI_TIMEOUT_MS`            | No                 | Positive integer fallback OpenAI request timeout. Defaults to `30000` (`30` seconds); managed KBBI Studio settings take precedence when available. |
+| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | Fallback AI rate-limit window for word study and missing-word fallbacks. Defaults to `900000` (`15` minutes); Studio changes refresh within about 15 seconds. |
+| `AI_RATE_LIMIT_MAX`            | No                 | Fallback AI requests allowed per IP/window. Defaults to `10`; Studio changes refresh within about 15 seconds. |
 | `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.   |
 | `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.    |
 | `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly. |
 | `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                    |
 
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
+
+Apply `supabase/migrations/20260929000000_runtime_api_settings.sql` to the shared Supabase project to manage the OpenAI timeout and AI rate limits from KBBI Studio. The API must use `SUPABASE_SERVICE_ROLE_KEY` to read these settings; otherwise it falls back to the environment values above. Changes refresh in each API process within about 15 seconds. Existing per-IP counters are preserved when the rate-limit window or maximum changes.
 
 Most configured providers must implement the Responses API at `/responses` and support strict JSON Schema Structured Outputs. Vikey (`https://api.vikey.ai/v1`) and Nara (`https://router.bynara.id/v1`) use Chat Completions; their generated JSON is validated by the same server-side word-study schema. Include the provider's version prefix (commonly `/v1`) in each base URL when required. Clients can inspect the safe allowlist with `GET /api/v1/ai/providers`, then pass optional `provider` and `model` fields to `POST /api/v1/ai/word-study`; arbitrary client-supplied URLs and credentials are not accepted.
 

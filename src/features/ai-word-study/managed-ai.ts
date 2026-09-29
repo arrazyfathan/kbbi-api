@@ -1,4 +1,5 @@
 import config, { AiProviderConfig } from "../../config";
+import { getRuntimeApiSettings } from "../../config/runtime-api-settings";
 import { supabase } from "../../config/supabase";
 import logger from "../../lib/logger";
 import { AiDefinitionProvider, OpenAiDefinitionProvider } from "../kbbi/ai-definition.service";
@@ -102,7 +103,7 @@ export class ManagedAiWordStudyService {
   }
 
   async generate(request: WordStudyRequest, requestId?: string) {
-    const configs = await runtimeProviders();
+    const [configs, runtimeSettings] = await Promise.all([runtimeProviders(), getRuntimeApiSettings()]);
     const providers: WordStudyProvider[] = configs.map((p) => {
       const usage: TokenUsage = {};
       const client = createOpenAiCompatibleWordStudyProvider(
@@ -110,7 +111,7 @@ export class ManagedAiWordStudyService {
         p.apiKey,
         p.models,
         p.defaultModel,
-        config.upstream.openAiTimeoutMs,
+        runtimeSettings.openaiTimeoutMs,
         p.baseUrl,
         (input, output) => {
           usage.input = input;
@@ -133,10 +134,11 @@ export class ManagedDefinitionProvider implements AiDefinitionProvider {
     const provider = defaultProvider(await runtimeProviders());
     if (!provider) throw new Error("No AI provider configured");
     const usage: TokenUsage = {};
+    const runtimeSettings = await getRuntimeApiSettings();
     const client = new OpenAiDefinitionProvider(
       provider.apiKey,
       provider.defaultModel,
-      config.upstream.openAiTimeoutMs,
+      runtimeSettings.openaiTimeoutMs,
       provider.baseUrl,
       (input, output) => {
         usage.input = input;
@@ -152,10 +154,11 @@ export class ManagedTranslationProvider implements AiTranslationProvider {
     const provider = defaultProvider(await runtimeProviders());
     if (!provider) throw new Error("No AI provider configured");
     const usage: TokenUsage = {};
+    const runtimeSettings = await getRuntimeApiSettings();
     const client = new OpenAiTranslationClient(
       provider.apiKey,
       provider.defaultModel,
-      config.upstream.openAiTimeoutMs,
+      runtimeSettings.openaiTimeoutMs,
       provider.baseUrl,
       (input, output) => {
         usage.input = input;

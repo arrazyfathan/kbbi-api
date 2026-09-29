@@ -1,6 +1,7 @@
-import { Request, Response } from "express";
-import { rateLimit } from "express-rate-limit";
+import { NextFunction, Request, Response } from "express";
+import { MemoryStore, rateLimit } from "express-rate-limit";
 import config from "../config";
+import { getRuntimeApiSettings, RuntimeApiSettings } from "../config/runtime-api-settings";
 import { rateLimitedError } from "../lib/api-error";
 import { getRequestId, setRequestIdHeader } from "../lib/request-id";
 import logger from "../lib/logger";
@@ -10,10 +11,11 @@ type RateLimitConfig = {
   max: number;
 };
 
-export function createRateLimiter(options: RateLimitConfig) {
+export function createRateLimiter(options: RateLimitConfig, store?: MemoryStore) {
   return rateLimit({
     windowMs: options.windowMs,
     limit: options.max,
+    ...(store ? { store } : {}),
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler: rateLimitHandler,
@@ -55,4 +57,28 @@ export function rateLimitHandler(req: Request, res: Response) {
 
 export const globalRateLimiter = createRateLimiter(config.rateLimit.global);
 export const scraperRateLimiter = createRateLimiter(config.rateLimit.scraper);
-export const aiRateLimiter = createRateLimiter(config.rateLimit.ai);
+
+const aiRateLimitStore = new MemoryStore();
+let aiLimiter: ReturnType<typeof createRateLimiter> | undefined;
+let appliedAiSettings: RuntimeApiSettings | undefined;
+
+export async function aiRateLimiter(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const settings = await getRuntimeApiSettings();
+  if (!aiLimiter || !sameAiRateSettings(appliedAiSettings, settings)) {
+    const windowChanged = appliedAiSettings?.aiRateLimitWindowMs !== undefined &&
+      appliedAiSettings.aiRateLimitWindowMs !== settings.aiRateLimitWindowMs;
+    aiLimiter = createRateLimiter({ windowMs: settings.aiRateLimitWindowMs, max: settings.aiRateLimitMax }, aiRateLimitStore);
+    if (windowChanged) {
+      const resetAt = Date.now() + settings.aiRateLimitWindowMs;
+      for (const client of new Set([...aiRateLimitStore.current.values(), ...aiRateLimitStore.previous.values()])) {
+        client.resetTime.setTime(resetAt);
+      }
+    }
+    appliedAiSettings = settings;
+  }
+  await aiLimiter(req, res, next);
+}
+
+function sameAiRateSettings(previous: RuntimeApiSettings | undefined, current: RuntimeApiSettings): boolean {
+  return previous?.aiRateLimitWindowMs === current.aiRateLimitWindowMs && previous.aiRateLimitMax === current.aiRateLimitMax;
+}

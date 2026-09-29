@@ -12,6 +12,7 @@ vi.mock("../src/config", () => ({
     defaultAiProvider: undefined,
     supabaseServiceRoleKey: "server-key",
     upstream: { openAiTimeoutMs: 1000 },
+    rateLimit: { ai: { windowMs: 900000, max: 10 } },
   },
 }));
 vi.mock("../src/config/supabase", () => ({
