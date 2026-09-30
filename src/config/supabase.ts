@@ -11,7 +11,7 @@ const supabaseConfig =
     : null;
 
 if (!supabaseConfig) {
-  logger.warn("Supabase env is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.");
+  logger.warn?.("Supabase env is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.");
 }
 
 export const supabase = supabaseConfig

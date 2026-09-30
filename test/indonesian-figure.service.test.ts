@@ -163,7 +163,6 @@ describe("IndonesianFigureService", () => {
         cacheName: "wikiquote_figure_list",
         cacheKey: "all",
         cacheHit: false,
-        ttlMs: 3600000,
       }),
       "Scraper cache miss",
     );
@@ -173,7 +172,6 @@ describe("IndonesianFigureService", () => {
         cacheName: "wikiquote_figure_list",
         cacheKey: "all",
         cacheHit: true,
-        ttlMs: 3600000,
       }),
       "Scraper cache hit",
     );

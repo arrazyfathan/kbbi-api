@@ -1,4 +1,5 @@
 import config from "../../config";
+import { getRuntimeApiSettings } from "../../config/runtime-api-settings";
 import {
   IndonesianFigure,
   IndonesianFigureList,
@@ -30,7 +31,6 @@ export class IndonesianFigureService {
   private readonly detailCache: TtlCache<string, IndonesianFigure>;
   private readonly sourceUrl = config.wikiquoteIndonesianFigureUrl;
   private readonly detailConcurrencyLimit = 5;
-  private readonly cacheTtlMs = config.cache.wikiquoteTtlMs;
 
   constructor(options: { now?: Clock } = {}) {
     this.now = options.now || Date.now;
@@ -99,7 +99,7 @@ export class IndonesianFigureService {
     }
 
     const parsed = this.parseDetailHtml(html, summary);
-    this.detailCache.set(normalizedSlug, parsed);
+    this.detailCache.set(normalizedSlug, parsed, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
 
     return parsed;
   }
@@ -138,7 +138,7 @@ export class IndonesianFigureService {
       items,
     };
 
-    this.cache.set(figureListCacheKey, data);
+    this.cache.set(figureListCacheKey, data, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
 
     return data;
   }
@@ -210,7 +210,6 @@ export class IndonesianFigureService {
         cacheName,
         cacheKey,
         cacheHit,
-        ttlMs: this.cacheTtlMs,
       },
       cacheHit ? "Scraper cache hit" : "Scraper cache miss",
     );

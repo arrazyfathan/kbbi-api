@@ -47,7 +47,6 @@ describe("ProverbService", () => {
         cacheName: "wikiquote_proverb_list",
         cacheKey: "all",
         cacheHit: false,
-        ttlMs: 3600000,
       }),
       "Scraper cache miss",
     );
@@ -57,7 +56,6 @@ describe("ProverbService", () => {
         cacheName: "wikiquote_proverb_list",
         cacheKey: "all",
         cacheHit: true,
-        ttlMs: 3600000,
       }),
       "Scraper cache hit",
     );

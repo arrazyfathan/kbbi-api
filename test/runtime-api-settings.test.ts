@@ -28,7 +28,7 @@ describe("runtime API settings", () => {
 
   it("loads settings from Supabase and caches them", async () => {
     mocks.rpc.mockResolvedValue({
-      data: [{ openai_timeout_ms: 45000, ai_rate_limit_window_ms: 120000, ai_rate_limit_max: 6 }],
+      data: [runtimeRow({ openai_timeout_ms: 45000, ai_rate_limit_window_ms: 120000, ai_rate_limit_max: 6 })],
       error: null,
     });
     const { getRuntimeApiSettings } = await import("../src/config/runtime-api-settings");
@@ -37,6 +37,16 @@ describe("runtime API settings", () => {
       openaiTimeoutMs: 45000,
       aiRateLimitWindowMs: 120000,
       aiRateLimitMax: 6,
+      globalRateLimitWindowMs: 900000,
+      globalRateLimitMax: 300,
+      scraperRateLimitWindowMs: 900000,
+      scraperRateLimitMax: 30,
+      wikiquoteCacheTtlMs: 3600000,
+      kbbiFetchTimeoutMs: 45000,
+      googleTranslateTimeoutMs: 10000,
+      translateCacheTtlMs: 3600000,
+      laraTranslateTimeoutMs: 10000,
+      laraCredentialMode: "environment",
     });
     await getRuntimeApiSettings();
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
@@ -51,6 +61,16 @@ describe("runtime API settings", () => {
       openaiTimeoutMs: 30000,
       aiRateLimitWindowMs: 900000,
       aiRateLimitMax: 10,
+      globalRateLimitWindowMs: 900000,
+      globalRateLimitMax: 300,
+      scraperRateLimitWindowMs: 900000,
+      scraperRateLimitMax: 30,
+      wikiquoteCacheTtlMs: 3600000,
+      kbbiFetchTimeoutMs: 45000,
+      googleTranslateTimeoutMs: 10000,
+      translateCacheTtlMs: 3600000,
+      laraTranslateTimeoutMs: 10000,
+      laraCredentialMode: "environment",
     });
     expect(mocks.warn).toHaveBeenCalledOnce();
   });
@@ -63,7 +83,36 @@ describe("runtime API settings", () => {
       openaiTimeoutMs: 30000,
       aiRateLimitWindowMs: 900000,
       aiRateLimitMax: 10,
+      globalRateLimitWindowMs: 900000,
+      globalRateLimitMax: 300,
+      scraperRateLimitWindowMs: 900000,
+      scraperRateLimitMax: 30,
+      wikiquoteCacheTtlMs: 3600000,
+      kbbiFetchTimeoutMs: 45000,
+      googleTranslateTimeoutMs: 10000,
+      translateCacheTtlMs: 3600000,
+      laraTranslateTimeoutMs: 10000,
+      laraCredentialMode: "environment",
     });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });
+
+function runtimeRow(overrides: Record<string, unknown> = {}) {
+  return {
+    openai_timeout_ms: 30000,
+    ai_rate_limit_window_ms: 900000,
+    ai_rate_limit_max: 10,
+    global_rate_limit_window_ms: 900000,
+    global_rate_limit_max: 300,
+    scraper_rate_limit_window_ms: 900000,
+    scraper_rate_limit_max: 30,
+    wikiquote_cache_ttl_ms: 3600000,
+    kbbi_fetch_timeout_ms: 45000,
+    google_translate_timeout_ms: 10000,
+    translate_cache_ttl_ms: 3600000,
+    lara_translate_timeout_ms: 10000,
+    lara_credential_mode: "environment",
+    ...overrides,
+  };
+}

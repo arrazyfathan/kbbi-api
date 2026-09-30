@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { MemoryStore, rateLimit } from "express-rate-limit";
 import config from "../config";
 import { getRuntimeApiSettings, RuntimeApiSettings } from "../config/runtime-api-settings";
@@ -18,6 +18,7 @@ export function createRateLimiter(options: RateLimitConfig, store?: MemoryStore)
     ...(store ? { store } : {}),
     standardHeaders: "draft-8",
     legacyHeaders: false,
+    validate: { unsharedStore: false },
     handler: rateLimitHandler,
   });
 }
@@ -55,8 +56,40 @@ export function rateLimitHandler(req: Request, res: Response) {
   });
 }
 
-export const globalRateLimiter = createRateLimiter(config.rateLimit.global);
-export const scraperRateLimiter = createRateLimiter(config.rateLimit.scraper);
+const globalRateLimitStore = new MemoryStore();
+const scraperRateLimitStore = new MemoryStore();
+let globalLimiter: ReturnType<typeof createRateLimiter> | undefined;
+let scraperLimiter: ReturnType<typeof createRateLimiter> | undefined;
+let appliedGlobalSettings: RateLimitConfig | undefined;
+let appliedScraperSettings: RateLimitConfig | undefined;
+
+export const globalRateLimiter: RequestHandler = async (req, res, next) => {
+  const settings = await getRuntimeApiSettings();
+  globalLimiter = updateLimiter(
+    globalLimiter,
+    globalRateLimitStore,
+    appliedGlobalSettings,
+    { windowMs: settings.globalRateLimitWindowMs, max: settings.globalRateLimitMax },
+    (nextSettings) => {
+      appliedGlobalSettings = nextSettings;
+    },
+  );
+  await globalLimiter(req, res, next);
+};
+
+export const scraperRateLimiter: RequestHandler = async (req, res, next) => {
+  const settings = await getRuntimeApiSettings();
+  scraperLimiter = updateLimiter(
+    scraperLimiter,
+    scraperRateLimitStore,
+    appliedScraperSettings,
+    { windowMs: settings.scraperRateLimitWindowMs, max: settings.scraperRateLimitMax },
+    (nextSettings) => {
+      appliedScraperSettings = nextSettings;
+    },
+  );
+  await scraperLimiter(req, res, next);
+};
 
 const aiRateLimitStore = new MemoryStore();
 let aiLimiter: ReturnType<typeof createRateLimiter> | undefined;
@@ -64,27 +97,35 @@ let appliedAiSettings: RuntimeApiSettings | undefined;
 
 export async function aiRateLimiter(req: Request, res: Response, next: NextFunction): Promise<void> {
   const settings = await getRuntimeApiSettings();
-  if (!aiLimiter || !sameAiRateSettings(appliedAiSettings, settings)) {
-    const windowChanged =
-      appliedAiSettings?.aiRateLimitWindowMs !== undefined &&
-      appliedAiSettings.aiRateLimitWindowMs !== settings.aiRateLimitWindowMs;
-    aiLimiter = createRateLimiter(
-      { windowMs: settings.aiRateLimitWindowMs, max: settings.aiRateLimitMax },
-      aiRateLimitStore,
-    );
-    if (windowChanged) {
-      const resetAt = Date.now() + settings.aiRateLimitWindowMs;
-      for (const client of new Set([...aiRateLimitStore.current.values(), ...aiRateLimitStore.previous.values()])) {
-        client.resetTime.setTime(resetAt);
-      }
-    }
-    appliedAiSettings = settings;
-  }
+  aiLimiter = updateLimiter(
+    aiLimiter,
+    aiRateLimitStore,
+    appliedAiSettings
+      ? { windowMs: appliedAiSettings.aiRateLimitWindowMs, max: appliedAiSettings.aiRateLimitMax }
+      : undefined,
+    { windowMs: settings.aiRateLimitWindowMs, max: settings.aiRateLimitMax },
+    () => {
+      appliedAiSettings = settings;
+    },
+  );
   await aiLimiter(req, res, next);
 }
 
-function sameAiRateSettings(previous: RuntimeApiSettings | undefined, current: RuntimeApiSettings): boolean {
-  return (
-    previous?.aiRateLimitWindowMs === current.aiRateLimitWindowMs && previous.aiRateLimitMax === current.aiRateLimitMax
-  );
+function updateLimiter(
+  limiter: ReturnType<typeof createRateLimiter> | undefined,
+  store: MemoryStore,
+  previous: RateLimitConfig | undefined,
+  current: RateLimitConfig,
+  onUpdate: (settings: RateLimitConfig) => void,
+) {
+  if (!limiter || previous?.windowMs !== current.windowMs || previous.max !== current.max) {
+    if (previous?.windowMs !== undefined && previous.windowMs !== current.windowMs) {
+      const resetAt = Date.now() + current.windowMs;
+      for (const client of new Set([...store.current.values(), ...store.previous.values()]))
+        client.resetTime.setTime(resetAt);
+    }
+    limiter = createRateLimiter(current, store);
+    onUpdate(current);
+  }
+  return limiter;
 }

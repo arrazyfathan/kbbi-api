@@ -35,10 +35,10 @@ export class TtlCache<K, V> {
     return entry.value;
   }
 
-  set(key: K, value: V): void {
+  set(key: K, value: V, ttlMs = this.ttlMs): void {
     this.entries.set(key, {
       value,
-      expiresAt: this.now() + this.ttlMs,
+      expiresAt: this.now() + ttlMs,
     });
   }
 

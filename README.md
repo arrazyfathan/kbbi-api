@@ -123,6 +123,8 @@ SUPABASE_ANON_KEY=your-anon-key
 | `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly.                                             |
 | `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                                                                |
 
+When KBBI Studio's API runtime settings migration is applied, administrator-managed values in `api_runtime_settings` override the numeric environment defaults above. Changes reach each API process within about 15 seconds. Lara credentials can be selected from the environment, managed in Studio (stored in Supabase Vault), or disabled. Runtime limiter counts and caches are process-local.
+
 Configuration is validated at startup. Missing Supabase variables are allowed so scraping endpoints can run without visit tracking, but partial Supabase configuration fails startup with an explicit error. `VISITOR_HASH_SALT` is required in production; development and test runs warn and continue if it is missing.
 
 Apply `supabase/migrations/20260929000000_runtime_api_settings.sql` to the shared Supabase project to manage the OpenAI timeout and AI rate limits from KBBI Studio. The API must use `SUPABASE_SERVICE_ROLE_KEY` to read these settings; otherwise it falls back to the environment values above. Changes refresh in each API process within about 15 seconds. Existing per-IP counters are preserved when the rate-limit window or maximum changes.

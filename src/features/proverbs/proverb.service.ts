@@ -1,4 +1,5 @@
 import config from "../../config";
+import { getRuntimeApiSettings } from "../../config/runtime-api-settings";
 import { getScraperHtml, isHttpNotFound } from "../../lib/http-client";
 import logger from "../../lib/logger";
 import { TtlCache } from "../../lib/ttl-cache";
@@ -20,7 +21,6 @@ export class ProverbService {
   private readonly cache: TtlCache<typeof proverbListCacheKey, ProverbList>;
   private readonly detailCache: TtlCache<string, ProverbDetail>;
   private readonly sourceUrl = config.wikiquoteProverbUrl;
-  private readonly cacheTtlMs = config.cache.wikiquoteTtlMs;
 
   constructor(options: { now?: Clock } = {}) {
     this.now = options.now || Date.now;
@@ -77,7 +77,7 @@ export class ProverbService {
 
     const parsed = this.parseDetailHtml(html, proverb);
 
-    this.detailCache.set(normalizedSlug, parsed);
+    this.detailCache.set(normalizedSlug, parsed, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
 
     return parsed;
   }
@@ -99,7 +99,7 @@ export class ProverbService {
       items,
     };
 
-    this.cache.set(proverbListCacheKey, data);
+    this.cache.set(proverbListCacheKey, data, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
 
     return data;
   }
@@ -156,7 +156,6 @@ export class ProverbService {
         cacheName,
         cacheKey,
         cacheHit,
-        ttlMs: this.cacheTtlMs,
       },
       cacheHit ? "Scraper cache hit" : "Scraper cache miss",
     );

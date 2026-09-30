@@ -1,4 +1,5 @@
 import config from "../../config";
+import { getRuntimeApiSettings } from "../../config/runtime-api-settings";
 import { getScraperHtml, isHttpNotFound } from "../../lib/http-client";
 import { parseKbbiHtml } from "./kbbi.parser";
 import type { Entry } from "./kbbi.types";
@@ -22,8 +23,9 @@ export class KbbiService {
   }
 
   private async fetchHtml(word: string): Promise<string> {
+    const settings = await getRuntimeApiSettings();
     return getScraperHtml(`${config.kbbiUrl}/${encodeURIComponent(word)}`, {
-      timeoutMs: config.upstream.kbbiFetchTimeoutMs,
+      timeoutMs: settings.kbbiFetchTimeoutMs,
       headers: {
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "id-ID,id;q=0.9",

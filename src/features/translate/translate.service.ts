@@ -1,4 +1,6 @@
 import config from "../../config";
+import { getRuntimeApiSettings, RuntimeApiSettings } from "../../config/runtime-api-settings";
+import { getRuntimeLaraProvider } from "../../config/runtime-lara-settings";
 import { getScraperHtml, isUpstreamHttpError } from "../../lib/http-client";
 import logger from "../../lib/logger";
 import { TtlCache } from "../../lib/ttl-cache";
@@ -29,10 +31,13 @@ const CACHE_KEY_SEPARATOR = ":";
 export class TranslateService {
   private readonly now: Clock;
   private readonly sourceUrl: string;
-  private readonly timeoutMs: number;
-  private readonly cacheTtlMs: number;
+  private readonly timeoutMsOverride?: number;
+  private readonly cacheTtlMsOverride?: number;
+  private timeoutMs: number;
+  private cacheTtlMs: number;
   private readonly cache: TtlCache<string, TranslateResult>;
   private readonly laraProvider?: LaraTranslationProvider;
+  private readonly useRuntimeLaraProvider: boolean;
   private readonly aiDefinitionService?: Pick<AiDefinitionService, "generate" | "isConfigured">;
   private readonly aiTranslationProvider?: AiTranslationProvider;
 
@@ -50,10 +55,13 @@ export class TranslateService {
   ) {
     this.now = options.now || Date.now;
     this.sourceUrl = options.sourceUrl ?? config.googleTranslateUrl;
+    this.timeoutMsOverride = options.timeoutMs;
+    this.cacheTtlMsOverride = options.cacheTtlMs;
     this.timeoutMs = options.timeoutMs ?? config.upstream.googleTranslateTimeoutMs;
     this.cacheTtlMs = options.cacheTtlMs ?? config.cache.translateTtlMs;
     this.laraProvider =
       options.laraProvider === undefined ? createConfiguredLaraProvider() : (options.laraProvider ?? undefined);
+    this.useRuntimeLaraProvider = options.laraProvider === undefined;
     this.aiDefinitionService = options.aiDefinitionService;
     this.aiTranslationProvider = options.aiTranslationProvider;
     this.cache = new TtlCache<string, TranslateResult>({
@@ -74,6 +82,9 @@ export class TranslateService {
     preloadedEntries?: Entry[] | null,
     requestId?: string,
   ): Promise<TranslateResult | null> {
+    const runtimeSettings = await getRuntimeApiSettings();
+    this.timeoutMs = this.timeoutMsOverride ?? runtimeSettings.googleTranslateTimeoutMs;
+    this.cacheTtlMs = this.cacheTtlMsOverride ?? runtimeSettings.translateCacheTtlMs;
     const normalizedWord = normalizeWord(word);
     const kbbiEntries = preloadedEntries === undefined ? await this.lookup(normalizedWord) : preloadedEntries;
     const aiGenerated = !kbbiEntries;
@@ -90,10 +101,10 @@ export class TranslateService {
     const entries = kbbiEntries ?? (await this.aiDefinitionService?.generate(normalizedWord, requestId));
     if (!entries) return null;
 
-    const translations = await this.translateAll(normalizedWord, entries, target, aiGenerated);
+    const translations = await this.translateAll(normalizedWord, entries, target, aiGenerated, runtimeSettings);
     const result = this.buildResult(normalizedWord, target, entries, translations, aiGenerated);
 
-    this.cache.set(cacheKey, result);
+    this.cache.set(cacheKey, result, this.cacheTtlMs);
 
     return result;
   }
@@ -111,21 +122,25 @@ export class TranslateService {
     entries: Entry[],
     target: string,
     aiGenerated: boolean,
+    runtimeSettings: RuntimeApiSettings,
   ): Promise<WordAndDefinitionTranslations> {
     const descriptions = entries.flatMap((entry) => entry.definitions.map((definition) => definition.description));
     const texts = [word, ...descriptions];
+    const laraProvider = this.useRuntimeLaraProvider
+      ? await getRuntimeLaraProvider(runtimeSettings)
+      : this.laraProvider;
 
     try {
       return await this.translateWithGoogle(word, descriptions, texts, target);
     } catch (googleError) {
-      if (this.laraProvider) {
+      if (laraProvider) {
         logger.warn(
           { err: googleError, event: "google_translate_failed", count: texts.length },
           "Google Translate failed, falling back to Lara Translate",
         );
 
         try {
-          const translations = await this.laraProvider.translate(texts, target);
+          const translations = await laraProvider.translate(texts, target);
 
           return { word: translations[0] ?? word, definitions: translations.slice(1), provider: "lara" };
         } catch (laraError) {
