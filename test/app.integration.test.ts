@@ -306,12 +306,14 @@ describe("Express app integration", () => {
     testServices.wordVisitService.getTopVisitedWords.mockResolvedValueOnce([{ word: "demokrasi", visitorCount: 12 }]);
     testServices.proverbService.list.mockResolvedValueOnce(createPaginatedProverbResult());
     testServices.proverbService.search.mockResolvedValueOnce(createPaginatedProverbResult());
-    testServices.proverbService.detail.mockResolvedValueOnce({
-      text: "Abu saja tak hinggap",
-      letter: "A",
-      slug: "Abu_saja_tak_hinggap",
-      sourceUrl: "https://id.wikiquote.org/wiki/Abu_saja_tak_hinggap",
-      meaning: "sesuatu yang sangat bersih dan berkilau",
+    testServices.proverbService.lookupDetail.mockResolvedValueOnce({
+      detail: {
+        text: "Abu saja tak hinggap",
+        letter: "A",
+        slug: "Abu_saja_tak_hinggap",
+        sourceUrl: "https://id.wikiquote.org/wiki/Abu_saja_tak_hinggap",
+        meaning: "sesuatu yang sangat bersih dan berkilau",
+      },
     });
     testServices.indonesianFigureService.list.mockResolvedValueOnce(createPaginatedFigureResult());
     testServices.indonesianFigureService.search.mockResolvedValueOnce(createPaginatedFigureResult());
@@ -343,7 +345,7 @@ describe("Express app integration", () => {
     expect(testServices.wordVisitService.getTopVisitedWords).toHaveBeenCalledWith(1);
     expect(testServices.proverbService.list).toHaveBeenCalledWith(1, 20);
     expect(testServices.proverbService.search).toHaveBeenCalledWith("air", 1, 20);
-    expect(testServices.proverbService.detail).toHaveBeenCalledWith("Abu_saja_tak_hinggap");
+    expect(testServices.proverbService.lookupDetail).toHaveBeenCalledWith("Abu_saja_tak_hinggap");
     expect(testServices.indonesianFigureService.list).toHaveBeenCalledWith(1, 10, { includeDetails: false });
     expect(testServices.indonesianFigureService.search).toHaveBeenCalledWith("soekarno", 1, 20, {
       includeDetails: false,
@@ -436,6 +438,8 @@ function createTestServices() {
       list: vi.fn(),
       search: vi.fn(),
       detail: vi.fn(),
+      lookupDetail: vi.fn(),
+      cacheAiDetail: vi.fn(),
     },
     translateService: {
       translate: vi.fn(),

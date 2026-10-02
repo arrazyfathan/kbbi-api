@@ -48,17 +48,21 @@ export class ProverbService {
   }
 
   async detail(slug: string): Promise<ProverbDetail | null> {
+    return (await this.lookupDetail(slug)).detail;
+  }
+
+  async lookupDetail(slug: string): Promise<{ detail: ProverbDetail | null; knownProverb?: Proverb }> {
     const normalizedSlug = this.normalizeSlug(slug);
 
     if (!normalizedSlug) {
-      return null;
+      return { detail: null };
     }
 
     const cached = this.detailCache.get(normalizedSlug);
     this.logCache("wikiquote_proverb_detail", normalizedSlug, Boolean(cached));
 
     if (cached) {
-      return cached;
+      return { detail: cached };
     }
 
     const data = await this.getAll();
@@ -69,7 +73,7 @@ export class ProverbService {
       html = await this.fetchHtml(this.getProverbUrl(normalizedSlug));
     } catch (error: any) {
       if (isHttpNotFound(error)) {
-        return null;
+        return { detail: null, knownProverb: proverb };
       }
 
       throw error;
@@ -77,9 +81,15 @@ export class ProverbService {
 
     const parsed = this.parseDetailHtml(html, proverb);
 
-    this.detailCache.set(normalizedSlug, parsed, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
+    if (parsed.meaning) {
+      this.detailCache.set(normalizedSlug, parsed, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
+    }
 
-    return parsed;
+    return { detail: parsed, ...(proverb ? { knownProverb: proverb } : {}) };
+  }
+
+  async cacheAiDetail(slug: string, detail: ProverbDetail): Promise<void> {
+    this.detailCache.set(this.normalizeSlug(slug), detail, (await getRuntimeApiSettings()).wikiquoteCacheTtlMs);
   }
 
   private async getAll(): Promise<ProverbList> {

@@ -12,6 +12,7 @@ A REST API for Indonesian language data built with Node.js, Express 5, and TypeS
 - AI word-study generation from client-supplied entries using server-configured OpenAI-compatible providers and strict Structured Outputs.
 - Public discovery of selectable AI providers and allowlisted models without exposing credentials or upstream URLs.
 - Paginated Indonesian proverb list, search, and detail endpoints.
+- Labeled AI meaning fallback for known proverbs missing a Wikiquote meaning.
 - Paginated Indonesian figure summary, search, and detail endpoints.
 - Request tracing with `X-Request-Id`, centralized error handling, and request logging with Pino.
 - IP-based rate limiting for public routes and stricter scraper-backed search endpoints.
@@ -49,7 +50,7 @@ Every response includes an `x-request-id` header. Provide `X-Request-Id` to pres
 - Node.js compatible with the versions required by the dependencies in `package.json`.
 - npm.
 - Optional: a Supabase project for word visit tracking and top visited words.
-- Optional: at least one Responses API-compatible AI provider for word study and missing-word definition and translation fallbacks.
+- Optional: at least one Responses API-compatible AI provider for word study, missing-word definitions, proverb meanings, and translation fallbacks.
 
 The core scraping endpoints run without Supabase or an AI provider. Without AI configuration, missing words remain `404` on search and translation. Word visit tracking and `/api/v1/words/top` require Supabase configuration. `GET /api/v1/ai/providers` remains available without AI configuration and returns an empty catalog; `POST /api/v1/ai/word-study` then returns `503`.
 
@@ -94,34 +95,34 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_ANON_KEY=your-anon-key
 ```
 
-| Variable                       | Required           | Description                                                                                                                                                   |
-| ------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                         | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                                                                |
-| `BASE_URL`                     | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.                                               |
-| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                               |
-| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                                                                   |
-| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                              |
-| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                                                            |
-| `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.                                              |
-| `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).                                               |
-| `GOOGLE_TRANSLATE_URL`         | No                 | Valid URL of the Google Translate scraper endpoint. Defaults to the unofficial `translate_a/single` endpoint.                                                 |
-| `GOOGLE_TRANSLATE_TIMEOUT_MS`  | No                 | Positive integer timeout for each Google Translate request in milliseconds. Defaults to `10000` (`10` seconds).                                               |
-| `LARA_ACCESS_KEY_ID`           | For Lara fallback  | Server-only Lara API access key ID. Must be provided together with `LARA_ACCESS_KEY_SECRET`.                                                                  |
-| `LARA_ACCESS_KEY_SECRET`       | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.                                                   |
-| `LARA_TRANSLATE_TIMEOUT_MS`    | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                                                                  |
-| `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                                                               |
-| `OPENAI_API_KEY`               | AI features        | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL` if using legacy configuration.                                                      |
-| `OPENAI_MODEL`                 | AI features        | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                                                             |
-| `OPENAI_BASE_URL`              | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                                                                   |
-| `AI_PROVIDERS`                 | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                                                                   |
-| `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used for missing-word fallbacks and when a word-study request omits `provider`.                                                                   |
-| `OPENAI_TIMEOUT_MS`            | No                 | Positive integer fallback OpenAI request timeout. Defaults to `30000` (`30` seconds); managed KBBI Studio settings take precedence when available.            |
-| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | Fallback AI rate-limit window for word study and missing-word fallbacks. Defaults to `900000` (`15` minutes); Studio changes refresh within about 15 seconds. |
-| `AI_RATE_LIMIT_MAX`            | No                 | Fallback AI requests allowed per IP/window. Defaults to `10`; Studio changes refresh within about 15 seconds.                                                 |
-| `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.                                               |
-| `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.                                                |
-| `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly.                                             |
-| `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                                                                |
+| Variable                       | Required           | Description                                                                                                                                                           |
+| ------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                         | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                                                                        |
+| `BASE_URL`                     | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.                                                       |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                                       |
+| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                                                                           |
+| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                      |
+| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                                                                    |
+| `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.                                                      |
+| `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).                                                       |
+| `GOOGLE_TRANSLATE_URL`         | No                 | Valid URL of the Google Translate scraper endpoint. Defaults to the unofficial `translate_a/single` endpoint.                                                         |
+| `GOOGLE_TRANSLATE_TIMEOUT_MS`  | No                 | Positive integer timeout for each Google Translate request in milliseconds. Defaults to `10000` (`10` seconds).                                                       |
+| `LARA_ACCESS_KEY_ID`           | For Lara fallback  | Server-only Lara API access key ID. Must be provided together with `LARA_ACCESS_KEY_SECRET`.                                                                          |
+| `LARA_ACCESS_KEY_SECRET`       | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.                                                           |
+| `LARA_TRANSLATE_TIMEOUT_MS`    | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                                                                          |
+| `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                                                                       |
+| `OPENAI_API_KEY`               | AI features        | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL` if using legacy configuration.                                                              |
+| `OPENAI_MODEL`                 | AI features        | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                                                                     |
+| `OPENAI_BASE_URL`              | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                                                                           |
+| `AI_PROVIDERS`                 | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                                                                           |
+| `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used for missing-word and proverb meaning fallbacks and when a word-study request omits `provider`.                                                       |
+| `OPENAI_TIMEOUT_MS`            | No                 | Positive integer fallback OpenAI request timeout. Defaults to `30000` (`30` seconds); managed KBBI Studio settings take precedence when available.                    |
+| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | Fallback AI rate-limit window for word study and missing-word/proverb fallbacks. Defaults to `900000` (`15` minutes); Studio changes refresh within about 15 seconds. |
+| `AI_RATE_LIMIT_MAX`            | No                 | Fallback AI requests allowed per IP/window. Defaults to `10`; Studio changes refresh within about 15 seconds.                                                         |
+| `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.                                                       |
+| `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.                                                        |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly.                                                     |
+| `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                                                                        |
 
 When KBBI Studio's API runtime settings migration is applied, administrator-managed values in `api_runtime_settings` override the numeric environment defaults above. Changes reach each API process within about 15 seconds. Lara credentials can be selected from the environment, managed in Studio (stored in Supabase Vault), or disabled. Runtime limiter counts and caches are process-local.
 

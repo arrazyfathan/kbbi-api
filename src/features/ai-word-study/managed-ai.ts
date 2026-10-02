@@ -3,6 +3,7 @@ import { getRuntimeApiSettings } from "../../config/runtime-api-settings";
 import { supabase } from "../../config/supabase";
 import logger from "../../lib/logger";
 import { AiDefinitionProvider, OpenAiDefinitionProvider } from "../kbbi/ai-definition.service";
+import { AiProverbMeaningProvider, OpenAiProverbMeaningProvider } from "../proverbs/ai-proverb-meaning.service";
 import { AiTranslationProvider, OpenAiTranslationClient } from "../translate/ai-translate.client";
 import { AiWordStudyService } from "./ai-word-study.service";
 import { createOpenAiCompatibleWordStudyProvider } from "./openai-word-study.provider";
@@ -146,6 +147,26 @@ export class ManagedDefinitionProvider implements AiDefinitionProvider {
       },
     );
     return measured("definition", provider, provider.defaultModel, usage, () => client.generate(word));
+  }
+}
+
+export class ManagedProverbMeaningProvider implements AiProverbMeaningProvider {
+  async generate(proverb: string): Promise<unknown> {
+    const provider = defaultProvider(await runtimeProviders());
+    if (!provider) throw new Error("No AI provider configured");
+    const usage: TokenUsage = {};
+    const runtimeSettings = await getRuntimeApiSettings();
+    const client = new OpenAiProverbMeaningProvider(
+      provider.apiKey,
+      provider.defaultModel,
+      runtimeSettings.openaiTimeoutMs,
+      provider.baseUrl,
+      (input, output) => {
+        usage.input = input;
+        usage.output = output;
+      },
+    );
+    return measured("definition", provider, provider.defaultModel, usage, () => client.generate(proverb));
   }
 }
 

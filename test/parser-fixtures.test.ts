@@ -127,6 +127,18 @@ describe("Wikiquote proverb parser fixtures", () => {
     });
   });
 
+  it("removes the trailing A to Z navigation text from a proverb meaning", () => {
+    const html = `
+      <h1>Ada uang abang sayang, tak ada uang abang melayang</h1>
+      <div id="mw-content-text"><div class="mw-parser-output">
+        <p><b>Ada uang abang sayang, tak ada uang abang melayang</b> artinya kalau orang yang dicintai/dikasihi dapat rezeki maka orang tersebut akan dikasihi, dibelai, dimanja dan kalau rezeki berkurang dan tidak ada penambahan bahkan tidak ada maka orang tersebut tidak lagi dihiraukan (tidak disayang, dimanja lagi). Peribahasa Indonesia A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</p>
+      </div></div>`;
+
+    expect(parseProverbDetailHtml(html, { sourceUrl: proverbSourceUrl }).meaning).toBe(
+      "kalau orang yang dicintai/dikasihi dapat rezeki maka orang tersebut akan dikasihi, dibelai, dimanja dan kalau rezeki berkurang dan tidak ada penambahan bahkan tidak ada maka orang tersebut tidak lagi dihiraukan (tidak disayang, dimanja lagi).",
+    );
+  });
+
   it("handles malformed proverb HTML without throwing", () => {
     expect(parseProverbListHtml(fixture("malformed.html"), proverbSourceUrl)).toEqual([]);
     expect(parseProverbDetailHtml(fixture("malformed.html"), { sourceUrl: proverbSourceUrl })).toEqual({

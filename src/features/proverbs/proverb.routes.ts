@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../lib/async-handler";
-import { scraperRateLimiter } from "../../middlewares/rate-limit.middleware";
+import { aiRateLimiter, scraperRateLimiter } from "../../middlewares/rate-limit.middleware";
 import type ProverbController from "./proverb.controller";
 
 export function createProverbRouter(proverbController: ProverbController): Router {
@@ -8,7 +8,12 @@ export function createProverbRouter(proverbController: ProverbController): Route
 
   router.get("/proverb", asyncHandler(proverbController.list));
   router.get("/proverb/search", scraperRateLimiter, asyncHandler(proverbController.search));
-  router.get("/proverb/:slug", asyncHandler(proverbController.detail));
+  router.get(
+    "/proverb/:slug",
+    asyncHandler(proverbController.lookupDetail),
+    (req, res, next) => (proverbController.needsAiFallback(req, res) ? aiRateLimiter(req, res, next) : next()),
+    asyncHandler(proverbController.detail),
+  );
 
   return router;
 }

@@ -326,7 +326,7 @@ Searches proverbs by text and returns paginated results.
 
 ### 6. Proverb Detail
 
-Returns a proverb and its meaning from the proverb detail page.
+Returns a proverb and its meaning from Wikiquote. If a listed proverb has no source meaning, the configured AI provider may supply a labeled meaning. Generated meanings are cached until the Wikiquote cache TTL expires; requests that need generation share the AI rate limit.
 
 - **URL**: `/api/v1/proverb/:slug`
 - **Method**: `GET`
@@ -349,6 +349,9 @@ Returns a proverb and its meaning from the proverb detail page.
       }
     }
     ```
+
+AI generated meanings include `"aiGenerated": true` and a `notice` explaining that the meaning was generated. If the provider is unavailable or cannot identify the meaning, an existing detail page still returns `meaning: null`; a missing detail page returns 404.
+
 - **Error Responses**:
   - **404 Not Found**:
     ```json

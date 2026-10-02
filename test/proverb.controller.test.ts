@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProverbController from "../src/features/proverbs/proverb.controller";
 import { API_ERROR_CODES } from "../src/lib/api-error";
+import { AI_PROVERB_NOTICE } from "../src/features/proverbs/ai-proverb-meaning.service";
 
 describe("ProverbController", () => {
   let proverbService: {
     list: ReturnType<typeof vi.fn>;
     search: ReturnType<typeof vi.fn>;
     detail: ReturnType<typeof vi.fn>;
+    lookupDetail: ReturnType<typeof vi.fn>;
+    cacheAiDetail: ReturnType<typeof vi.fn>;
   };
   let controller: ProverbController;
 
@@ -15,6 +18,8 @@ describe("ProverbController", () => {
       list: vi.fn(),
       search: vi.fn(),
       detail: vi.fn(),
+      lookupDetail: vi.fn(),
+      cacheAiDetail: vi.fn(),
     };
     controller = new ProverbController(proverbService);
   });
@@ -81,27 +86,31 @@ describe("ProverbController", () => {
   });
 
   it("passes normalized slugs to detail", async () => {
-    proverbService.detail.mockResolvedValueOnce({
-      text: "Ada gula ada semut",
-      letter: "A",
-      slug: "Ada_gula_ada_semut",
-      sourceUrl: "https://example.com/Ada_gula_ada_semut",
-      meaning: null,
+    proverbService.lookupDetail.mockResolvedValueOnce({
+      detail: {
+        text: "Ada gula ada semut",
+        letter: "A",
+        slug: "Ada_gula_ada_semut",
+        sourceUrl: "https://example.com/Ada_gula_ada_semut",
+        meaning: null,
+      },
     });
 
     const { req, res } = createRequestResponse({ params: { slug: " Ada gula ada semut " } });
 
+    await controller.lookupDetail(req, res, vi.fn());
     await controller.detail(req, res);
 
-    expect(proverbService.detail).toHaveBeenCalledWith("Ada_gula_ada_semut");
+    expect(proverbService.lookupDetail).toHaveBeenCalledWith("Ada_gula_ada_semut");
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it("throws a not found error when proverb detail is missing", async () => {
-    proverbService.detail.mockResolvedValueOnce(null);
+    proverbService.lookupDetail.mockResolvedValueOnce({ detail: null });
 
     const { req, res } = createRequestResponse({ params: { slug: "missing" } });
 
+    await controller.lookupDetail(req, res, vi.fn());
     await expect(controller.detail(req, res)).rejects.toMatchObject({
       statusCode: 404,
       code: API_ERROR_CODES.NOT_FOUND,
@@ -109,6 +118,34 @@ describe("ProverbController", () => {
     });
 
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("labels generated meanings for known proverbs with missing source details", async () => {
+    proverbService.lookupDetail.mockResolvedValueOnce({
+      detail: null,
+      knownProverb: {
+        text: "Ada gula ada semut",
+        letter: "A",
+        slug: "Ada_gula_ada_semut",
+        sourceUrl: "https://example.com/Ada_gula_ada_semut",
+      },
+    });
+    const ai = {
+      isConfigured: vi.fn(() => true),
+      generate: vi.fn().mockResolvedValue("Orang akan datang karena ada keuntungan."),
+    };
+    controller = new ProverbController(proverbService, ai);
+    const { req, res, body } = createRequestResponse({ params: { slug: "Ada_gula_ada_semut" } });
+    await controller.lookupDetail(req, res, vi.fn());
+    expect(controller.needsAiFallback(req, res)).toBe(true);
+    await controller.detail(req, res);
+    expect(ai.generate).toHaveBeenCalledWith("Ada gula ada semut", undefined);
+    expect(proverbService.cacheAiDetail).toHaveBeenCalled();
+    expect(body.value.data).toMatchObject({
+      meaning: "Orang akan datang karena ada keuntungan.",
+      aiGenerated: true,
+      notice: AI_PROVERB_NOTICE,
+    });
   });
 });
 
@@ -130,10 +167,12 @@ function createPaginatedResult() {
 function createRequestResponse(input: { query?: Record<string, unknown>; params?: Record<string, string> }) {
   const body: { value?: any } = {};
   const req = {
+    headers: {},
     query: input.query || {},
     params: input.params || {},
   } as any;
   const res = {
+    locals: {},
     status: vi.fn().mockReturnThis(),
     json: vi.fn((value: any) => {
       body.value = value;

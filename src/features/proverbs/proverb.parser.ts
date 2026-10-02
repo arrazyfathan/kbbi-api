@@ -216,6 +216,7 @@ export function normalizeProverbSearchText(value: string): string {
 
 function normalizeProverbMeaningText(value: string): string {
   return normalizeProverbText(value)
+    .replace(/(?:\s+Peribahasa\s+Indonesia)?(?:\s+[A-Z]){26}$/i, "")
     .replace(/^[-:;,\s]+/, "")
     .trim();
 }

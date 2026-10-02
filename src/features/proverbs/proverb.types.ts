@@ -21,4 +21,6 @@ export interface PaginatedProverbList {
 
 export interface ProverbDetail extends Proverb {
   meaning: string | null;
+  aiGenerated?: true;
+  notice?: string;
 }
