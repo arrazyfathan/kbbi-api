@@ -5,6 +5,9 @@ export const API_ERROR_CODES = {
   UPSTREAM_UNAVAILABLE: "UPSTREAM_UNAVAILABLE",
   INTERNAL_ERROR: "INTERNAL_ERROR",
   RATE_LIMITED: "RATE_LIMITED",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  FORBIDDEN: "FORBIDDEN",
+  CONFLICT: "CONFLICT",
 } as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES];
@@ -45,6 +48,18 @@ export function validationError(message: string, details?: ApiErrorDetails): Api
     code: API_ERROR_CODES.VALIDATION_ERROR,
     details,
   });
+}
+
+export function unauthorizedError(): ApiError {
+  return new ApiError("Authentication required", { statusCode: 401, code: API_ERROR_CODES.UNAUTHORIZED });
+}
+
+export function forbiddenError(): ApiError {
+  return new ApiError("Administrator access required", { statusCode: 403, code: API_ERROR_CODES.FORBIDDEN });
+}
+
+export function conflictError(message = "Campaign version or state conflict"): ApiError {
+  return new ApiError(message, { statusCode: 409, code: API_ERROR_CODES.CONFLICT });
 }
 
 export function notFoundError(message: string): ApiError {

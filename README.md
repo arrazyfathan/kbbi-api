@@ -95,34 +95,39 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_ANON_KEY=your-anon-key
 ```
 
-| Variable                       | Required           | Description                                                                                                                                                           |
-| ------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                         | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                                                                        |
-| `BASE_URL`                     | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.                                                       |
-| `RATE_LIMIT_GLOBAL_WINDOW_MS`  | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                                       |
-| `RATE_LIMIT_GLOBAL_MAX`        | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                                                                           |
-| `RATE_LIMIT_SCRAPER_WINDOW_MS` | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                      |
-| `RATE_LIMIT_SCRAPER_MAX`       | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                                                                    |
-| `WIKIQUOTE_CACHE_TTL_MS`       | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.                                                      |
-| `KBBI_FETCH_TIMEOUT_MS`        | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).                                                       |
-| `GOOGLE_TRANSLATE_URL`         | No                 | Valid URL of the Google Translate scraper endpoint. Defaults to the unofficial `translate_a/single` endpoint.                                                         |
-| `GOOGLE_TRANSLATE_TIMEOUT_MS`  | No                 | Positive integer timeout for each Google Translate request in milliseconds. Defaults to `10000` (`10` seconds).                                                       |
-| `LARA_ACCESS_KEY_ID`           | For Lara fallback  | Server-only Lara API access key ID. Must be provided together with `LARA_ACCESS_KEY_SECRET`.                                                                          |
-| `LARA_ACCESS_KEY_SECRET`       | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.                                                           |
-| `LARA_TRANSLATE_TIMEOUT_MS`    | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                                                                          |
-| `TRANSLATE_CACHE_TTL_MS`       | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                                                                       |
-| `OPENAI_API_KEY`               | AI features        | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL` if using legacy configuration.                                                              |
-| `OPENAI_MODEL`                 | AI features        | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                                                                     |
-| `OPENAI_BASE_URL`              | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                                                                           |
-| `AI_PROVIDERS`                 | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                                                                           |
-| `AI_DEFAULT_PROVIDER`          | No                 | Provider ID used for missing-word and proverb meaning fallbacks and when a word-study request omits `provider`.                                                       |
-| `OPENAI_TIMEOUT_MS`            | No                 | Positive integer fallback OpenAI request timeout. Defaults to `30000` (`30` seconds); managed KBBI Studio settings take precedence when available.                    |
-| `AI_RATE_LIMIT_WINDOW_MS`      | No                 | Fallback AI rate-limit window for word study and missing-word/proverb fallbacks. Defaults to `900000` (`15` minutes); Studio changes refresh within about 15 seconds. |
-| `AI_RATE_LIMIT_MAX`            | No                 | Fallback AI requests allowed per IP/window. Defaults to `10`; Studio changes refresh within about 15 seconds.                                                         |
-| `SUPABASE_URL`                 | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.                                                       |
-| `SUPABASE_ANON_KEY`            | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.                                                        |
-| `SUPABASE_SERVICE_ROLE_KEY`    | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly.                                                     |
-| `VISITOR_HASH_SALT`            | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                                                                        |
+| Variable                        | Required           | Description                                                                                                                                                           |
+| ------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                          | No                 | Positive integer server port. Defaults to `3000`. Invalid values fail startup.                                                                                        |
+| `BASE_URL`                      | No                 | Valid URL used in the root endpoint examples. Defaults to `http://localhost:3000`. Invalid values fail startup.                                                       |
+| `RATE_LIMIT_GLOBAL_WINDOW_MS`   | No                 | Positive integer global rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                                       |
+| `RATE_LIMIT_GLOBAL_MAX`         | No                 | Positive integer global request limit per IP per window. Defaults to `300`.                                                                                           |
+| `RATE_LIMIT_SCRAPER_WINDOW_MS`  | No                 | Positive integer scraper/search endpoint rate limit window in milliseconds. Defaults to `900000` (`15` minutes).                                                      |
+| `RATE_LIMIT_SCRAPER_MAX`        | No                 | Positive integer scraper/search request limit per IP per window. Defaults to `30`.                                                                                    |
+| `WIKIQUOTE_CACHE_TTL_MS`        | No                 | Positive integer TTL for Wikiquote proverb and figure list/detail caches in milliseconds. Defaults to `3600000`.                                                      |
+| `KBBI_FETCH_TIMEOUT_MS`         | No                 | Positive integer timeout for each upstream KBBI HTML fetch in milliseconds. Defaults to `45000` (`45` seconds).                                                       |
+| `GOOGLE_TRANSLATE_URL`          | No                 | Valid URL of the Google Translate scraper endpoint. Defaults to the unofficial `translate_a/single` endpoint.                                                         |
+| `GOOGLE_TRANSLATE_TIMEOUT_MS`   | No                 | Positive integer timeout for each Google Translate request in milliseconds. Defaults to `10000` (`10` seconds).                                                       |
+| `LARA_ACCESS_KEY_ID`            | For Lara fallback  | Server-only Lara API access key ID. Must be provided together with `LARA_ACCESS_KEY_SECRET`.                                                                          |
+| `LARA_ACCESS_KEY_SECRET`        | For Lara fallback  | Server-only Lara API secret. Must be provided together with `LARA_ACCESS_KEY_ID` and must never be exposed.                                                           |
+| `LARA_TRANSLATE_TIMEOUT_MS`     | No                 | Positive integer timeout for each Lara fallback request. Defaults to `10000` (`10` seconds).                                                                          |
+| `TRANSLATE_CACHE_TTL_MS`        | No                 | Positive integer TTL for the translate cache in milliseconds. Defaults to `3600000` (`1` hour).                                                                       |
+| `OPENAI_API_KEY`                | AI features        | Server-only OpenAI API key. Must be provided together with `OPENAI_MODEL` if using legacy configuration.                                                              |
+| `OPENAI_MODEL`                  | AI features        | OpenAI model used for strict Structured Outputs. Must be provided together with `OPENAI_API_KEY`.                                                                     |
+| `OPENAI_BASE_URL`               | No                 | Valid OpenAI-compatible API root. Omit it to use OpenAI's default endpoint.                                                                                           |
+| `AI_PROVIDERS`                  | No                 | JSON array of additional provider IDs, server-only keys, base URLs, and allowlisted models.                                                                           |
+| `AI_DEFAULT_PROVIDER`           | No                 | Provider ID used for missing-word and proverb meaning fallbacks and when a word-study request omits `provider`.                                                       |
+| `OPENAI_TIMEOUT_MS`             | No                 | Positive integer fallback OpenAI request timeout. Defaults to `30000` (`30` seconds); managed KBBI Studio settings take precedence when available.                    |
+| `AI_RATE_LIMIT_WINDOW_MS`       | No                 | Fallback AI rate-limit window for word study and missing-word/proverb fallbacks. Defaults to `900000` (`15` minutes); Studio changes refresh within about 15 seconds. |
+| `AI_RATE_LIMIT_MAX`             | No                 | Fallback AI requests allowed per IP/window. Defaults to `10`; Studio changes refresh within about 15 seconds.                                                         |
+| `SUPABASE_URL`                  | For visit tracking | Valid Supabase project URL. If provided, either `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is required.                                                       |
+| `SUPABASE_ANON_KEY`             | No                 | Supabase anon key. The bundled migrations revoke direct anon access, so this is not enough for visit tracking.                                                        |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Visit tracking     | Server-only key for visit tracking. Takes precedence over `SUPABASE_ANON_KEY` and must never be exposed publicly.                                                     |
+| `NOTIFICATION_SENDING_ENABLED`  | No                 | Set to `true` only after rollout verification. Defaults to `false` for manual and scheduled sends.                                                                    |
+| `NOTIFICATION_ENVIRONMENT`      | No                 | FCM topic prefix, `development` or `production`. Defaults to `development`.                                                                                           |
+| `NOTIFICATION_CRON_SECRET`      | Scheduled sends    | Dedicated bearer secret for the internal dispatch endpoint. Keep it in the backend environment and Supabase Vault.                                                    |
+| `FIREBASE_PROJECT_ID`           | Sending            | Firebase target project ID.                                                                                                                                           |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Sending            | Single-line server-only service account JSON. Alternatively set `GOOGLE_APPLICATION_CREDENTIALS` on the host.                                                         |
+| `VISITOR_HASH_SALT`             | Production         | Server-only salt included when hashing `X-Visitor-Id`. Missing values fail production startup.                                                                        |
 
 When KBBI Studio's API runtime settings migration is applied, administrator-managed values in `api_runtime_settings` override the numeric environment defaults above. Changes reach each API process within about 15 seconds. Lara credentials can be selected from the environment, managed in Studio (stored in Supabase Vault), or disabled. Runtime limiter counts and caches are process-local.
 
@@ -367,10 +372,11 @@ test/
 
 The repository includes `vercel.json` configured to route all requests to `src/server.ts` with `@vercel/node`.
 
-### Separate admin back office
+### Administrator settings and notification campaigns
 
-The sibling `kbbi-admin` project owns the admin UI and Firebase topic campaigns. Apply
-`supabase/migrations/20260927000000_admin_backoffice.sql` before using it. Configure
+The sibling `kbbi-studio` project owns the admin UI. Apply
+`supabase/migrations/20260927000000_admin_backoffice.sql` and
+`supabase/migrations/20261005000000_notification_scheduling.sql` before using campaign management. Configure
 `SUPABASE_SERVICE_ROLE_KEY` on the API so it can read enabled providers from the
 service-role-only database function and record AI and word-search usage. Existing
 `OPENAI_*` and `AI_PROVIDERS` values can be imported once with
@@ -378,9 +384,25 @@ service-role-only database function and record AI and word-search usage. Existin
 database settings are authoritative. Runtime provider settings are cached for up
 to 15 seconds per API instance. Do not expose the service role key to clients.
 
-The admin repo contains its own setup instructions, including the Supabase Auth
-allowlist and Firebase service account configuration. The API continues to work
-without the admin migration by using its environment-configured providers.
+Notification campaign routes are available only at `/api/v1/admin/notification-campaigns`.
+They require a Supabase access token for a user in `admin_users`. Studio forwards the
+administrator's token, and the API checks it independently. A campaign draft contains
+`topic`, `title`, `body`, `destination`, and `schedule_mode`; scheduled modes use
+`start_date` and `local_time` in `Asia/Jakarta`, daily/weekly may use `end_date`, and
+weekly requires `weekday` (`0` = Sunday). Edits send `{ "version": 1, "campaign": {...} }`;
+state actions send `{ "version": 1 }`. Delivery history and dispatcher health are
+available on the same admin route. The [OpenAPI document](docs/openapi.yaml) lists
+all operations and response codes.
+
+The API owns Firebase credentials and uses data-only FCM topic messages. Manual and
+scheduled sends remain disabled until `NOTIFICATION_SENDING_ENABLED=true`. Keep Cron
+inactive until the Android and Studio integrations and real-device delivery are
+verified. At activation, store the full dispatch URL and Cron secret in Supabase Vault,
+then run [the Cron setup template](supabase/notification-cron.example.sql). The
+`POST /api/v1/internal/notifications/dispatch` endpoint requires the dedicated Cron
+secret; it processes at most five occurrences per invocation. A reported `sent`
+outcome means FCM accepted the message, not that a device displayed it. `unknown`
+outcomes are never resent automatically.
 
 For production deployment:
 

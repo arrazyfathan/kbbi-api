@@ -8,8 +8,13 @@ import { createProverbRouter } from "../features/proverbs/proverb.routes";
 import { createTranslateRouter } from "../features/translate/translate.routes";
 import { createWordVisitRouter } from "../features/word-visits/word-visit.routes";
 import { createAiWordStudyRouter } from "../features/ai-word-study/ai-word-study.routes";
+import { createNotificationRouter } from "../features/notifications/notification.routes";
+import type { NotificationService } from "../features/notifications/notification.service";
 
-export function createApiRouter(controllers: AppControllers): Router {
+export function createApiRouter(
+  controllers: AppControllers,
+  notificationServiceFactory?: () => NotificationService,
+): Router {
   const router = Router();
 
   router.get("/", (req: Request, res: Response) => {
@@ -55,6 +60,7 @@ export function createApiRouter(controllers: AppControllers): Router {
   if (controllers.aiWordStudyController) {
     router.use("/api/v1", createAiWordStudyRouter(controllers.aiWordStudyController));
   }
+  router.use("/api/v1", createNotificationRouter(notificationServiceFactory));
   router.use("/api/v1", createDomainRouter(controllers));
   router.use(createDomainRouter(controllers));
 

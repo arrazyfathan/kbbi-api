@@ -19,6 +19,8 @@ import {
   ManagedTranslationProvider,
 } from "./features/ai-word-study/managed-ai";
 import config from "./config";
+import { NotificationService } from "./features/notifications/notification.service";
+import { firebaseSender } from "./features/notifications/firebase-sender";
 
 export type AppControllers = {
   aiWordStudyController?: AiWordStudyController;
@@ -32,6 +34,7 @@ export type AppControllers = {
 
 export type AppDependencies = {
   controllers: AppControllers;
+  notificationServiceFactory?: () => NotificationService;
 };
 
 export function createAppDependencies(): AppDependencies {
@@ -53,6 +56,7 @@ export function createAppDependencies(): AppDependencies {
   });
 
   return {
+    notificationServiceFactory: () => new NotificationService(undefined, firebaseSender),
     controllers: {
       aiWordStudyController: new AiWordStudyController(aiWordStudyService),
       healthController: new HealthController(),

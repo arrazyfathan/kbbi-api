@@ -27,6 +27,11 @@ const CONFIG_ENV_KEYS = [
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "NOTIFICATION_SENDING_ENABLED",
+  "NOTIFICATION_ENVIRONMENT",
+  "NOTIFICATION_CRON_SECRET",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_SERVICE_ACCOUNT_JSON",
   "VISITOR_HASH_SALT",
 ] as const;
 
@@ -50,6 +55,8 @@ describe("config", () => {
     expect(config.baseUrl).toBe("http://localhost:3000");
     expect(config.kbbiUrl).toBe("https://kbbi.web.id");
     expect(config.isSupabaseConfigured).toBe(false);
+    expect(config.notificationSendingEnabled).toBe(false);
+    expect(config.notificationEnvironment).toBe("development");
     expect(config.isLaraConfigured).toBe(false);
     expect(config.isOpenAiConfigured).toBe(false);
     expect(config.aiProviders).toEqual([]);

@@ -40,7 +40,7 @@ class App {
 
   private initializeRoutes() {
     this.app.use(docsRouter);
-    this.app.use(createApiRouter(this.dependencies.controllers));
+    this.app.use(createApiRouter(this.dependencies.controllers, this.dependencies.notificationServiceFactory));
   }
 
   private initializeErrorHandling() {

@@ -114,6 +114,17 @@ const envSchema = z
     SUPABASE_URL: optionalTrimmedString.pipe(z.url("SUPABASE_URL must be a valid URL").optional()),
     SUPABASE_ANON_KEY: optionalTrimmedString,
     SUPABASE_SERVICE_ROLE_KEY: optionalTrimmedString,
+    NOTIFICATION_CRON_SECRET: optionalTrimmedString,
+    NOTIFICATION_SENDING_ENABLED: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.enum(["true", "false"]).default("false"),
+    ),
+    NOTIFICATION_ENVIRONMENT: z.preprocess(
+      (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+      z.enum(["development", "production"]).default("development"),
+    ),
+    FIREBASE_SERVICE_ACCOUNT_JSON: optionalTrimmedString,
+    FIREBASE_PROJECT_ID: optionalTrimmedString,
     VISITOR_HASH_SALT: optionalTrimmedString,
   })
   .superRefine((env, ctx) => {
@@ -186,6 +197,11 @@ export type Config = {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   supabaseServiceRoleKey?: string;
+  notificationCronSecret?: string;
+  notificationSendingEnabled: boolean;
+  notificationEnvironment: "development" | "production";
+  firebaseServiceAccountJson?: string;
+  firebaseProjectId?: string;
   supabaseKey?: string;
   isSupabaseConfigured: boolean;
   openAiApiKey?: string;
@@ -260,6 +276,11 @@ const config: Config = {
   supabaseUrl: parsedEnv.SUPABASE_URL,
   supabaseAnonKey: parsedEnv.SUPABASE_ANON_KEY,
   supabaseServiceRoleKey: parsedEnv.SUPABASE_SERVICE_ROLE_KEY,
+  notificationCronSecret: parsedEnv.NOTIFICATION_CRON_SECRET,
+  notificationSendingEnabled: parsedEnv.NOTIFICATION_SENDING_ENABLED === "true",
+  notificationEnvironment: parsedEnv.NOTIFICATION_ENVIRONMENT,
+  firebaseServiceAccountJson: parsedEnv.FIREBASE_SERVICE_ACCOUNT_JSON,
+  firebaseProjectId: parsedEnv.FIREBASE_PROJECT_ID,
   supabaseKey,
   isSupabaseConfigured: Boolean(parsedEnv.SUPABASE_URL && supabaseKey),
   visitorHashSalt: parsedEnv.VISITOR_HASH_SALT,

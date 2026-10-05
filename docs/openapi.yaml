@@ -17,11 +17,210 @@ tags:
     description: Indonesian figure profile and quote endpoints.
   - name: Metadata
     description: API discovery and documentation metadata.
+  - name: Notification Campaigns
+    description: Administrator-only editorial FCM campaign management.
+  - name: Notification Dispatch
+    description: Protected internal scheduler endpoint.
   - name: Proverbs
     description: Indonesian proverb listing, search, and detail endpoints.
   - name: Words
     description: KBBI word search and visitor-count endpoints.
 paths:
+  /api/v1/admin/notification-campaigns:
+    get:
+      tags: [Notification Campaigns]
+      summary: List notification campaigns.
+      description: Returns newest campaigns first, with optional status and pagination filters.
+      operationId: listNotificationCampaigns
+      security: [{ AdminBearer: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/NotificationPage" }
+        - { $ref: "#/components/parameters/NotificationLimit" }
+        - name: status
+          in: query
+          description: Filter by campaign status.
+          schema:
+            $ref: "#/components/schemas/NotificationStatus"
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+    post:
+      tags: [Notification Campaigns]
+      summary: Create a campaign draft.
+      description: Saves content and Jakarta-local schedule settings without sending.
+      operationId: createNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NotificationCampaignInput" }
+      responses:
+        "201": { $ref: "#/components/responses/NotificationSuccess" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+  /api/v1/admin/notification-campaigns/health:
+    get:
+      tags: [Notification Campaigns]
+      summary: Inspect dispatcher heartbeat and overdue work.
+      description: Warns when the heartbeat is older than five minutes or work is overdue.
+      operationId: getNotificationDispatcherHealth
+      security: [{ AdminBearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+  /api/v1/admin/notification-campaigns/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/NotificationCampaignId" }
+    get:
+      tags: [Notification Campaigns]
+      summary: Get a campaign.
+      description: Returns one campaign and its current version.
+      operationId: getNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+    patch:
+      tags: [Notification Campaigns]
+      summary: Edit a draft or paused campaign using its current version.
+      description: Replaces content and schedule settings when the supplied version matches.
+      operationId: editNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, campaign]
+              properties:
+                version: { type: integer, minimum: 1 }
+                campaign: { $ref: "#/components/schemas/NotificationCampaignInput" }
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "409": { $ref: "#/components/responses/NotificationConflict" }
+  /api/v1/admin/notification-campaigns/{id}/deliveries:
+    parameters:
+      - { $ref: "#/components/parameters/NotificationCampaignId" }
+    get:
+      tags: [Notification Campaigns]
+      summary: List immutable delivery attempts for a campaign.
+      description: Returns occurrence snapshots newest first, including outcomes and sanitized error codes.
+      operationId: listNotificationDeliveries
+      security: [{ AdminBearer: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/NotificationPage" }
+        - { $ref: "#/components/parameters/NotificationLimit" }
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+  /api/v1/admin/notification-campaigns/{id}/send:
+    post:
+      tags: [Notification Campaigns]
+      summary: Claim and immediately send an unsent draft once.
+      description: A successful FCM response means acceptance, not device delivery. Unknown attempts are never retried automatically.
+      operationId: sendNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/NotificationCampaignId" }]
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "409": { $ref: "#/components/responses/NotificationConflict" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailable" }
+  /api/v1/admin/notification-campaigns/{id}/schedule:
+    post:
+      tags: [Notification Campaigns]
+      summary: Activate a draft's saved one-time or recurring schedule.
+      description: Calculates the first future Asia/Jakarta occurrence and activates the campaign.
+      operationId: scheduleNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/NotificationCampaignId" }]
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/NotificationSuccess" },
+          "401": { $ref: "#/components/responses/NotificationUnauthorized" },
+          "403": { $ref: "#/components/responses/NotificationForbidden" },
+          "404": { $ref: "#/components/responses/NotificationNotFound" },
+          "409": { $ref: "#/components/responses/NotificationConflict" },
+        }
+  /api/v1/admin/notification-campaigns/{id}/pause:
+    post:
+      tags: [Notification Campaigns]
+      summary: Pause a scheduled recurring campaign.
+      description: Stops future claims; a delivery already claimed may still complete.
+      operationId: pauseNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/NotificationCampaignId" }]
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/NotificationSuccess" },
+          "401": { $ref: "#/components/responses/NotificationUnauthorized" },
+          "403": { $ref: "#/components/responses/NotificationForbidden" },
+          "404": { $ref: "#/components/responses/NotificationNotFound" },
+          "409": { $ref: "#/components/responses/NotificationConflict" },
+        }
+  /api/v1/admin/notification-campaigns/{id}/resume:
+    post:
+      tags: [Notification Campaigns]
+      summary: Resume a paused recurring campaign at its next future occurrence.
+      description: Calculates the next future occurrence without replaying missed occurrences.
+      operationId: resumeNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/NotificationCampaignId" }]
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/NotificationSuccess" },
+          "401": { $ref: "#/components/responses/NotificationUnauthorized" },
+          "403": { $ref: "#/components/responses/NotificationForbidden" },
+          "404": { $ref: "#/components/responses/NotificationNotFound" },
+          "409": { $ref: "#/components/responses/NotificationConflict" },
+        }
+  /api/v1/admin/notification-campaigns/{id}/cancel:
+    post:
+      tags: [Notification Campaigns]
+      summary: Cancel future campaign occurrences.
+      description: Stops future claims; a delivery already claimed may still complete.
+      operationId: cancelNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/NotificationCampaignId" }]
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/NotificationSuccess" },
+          "401": { $ref: "#/components/responses/NotificationUnauthorized" },
+          "403": { $ref: "#/components/responses/NotificationForbidden" },
+          "404": { $ref: "#/components/responses/NotificationNotFound" },
+          "409": { $ref: "#/components/responses/NotificationConflict" },
+        }
+  /api/v1/internal/notifications/dispatch:
+    post:
+      tags: [Notification Dispatch]
+      summary: Process up to five due occurrences using a dedicated Cron secret.
+      description: Recovers stale claims, skips overdue work, and processes a bounded batch.
+      operationId: dispatchNotifications
+      security: [{ CronBearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "503": { $ref: "#/components/responses/UpstreamUnavailable" }
   /:
     get:
       tags:
@@ -1144,7 +1343,37 @@ paths:
         "504":
           $ref: "#/components/responses/UpstreamTimeout"
 components:
+  securitySchemes:
+    AdminBearer: { type: http, scheme: bearer, description: Verified Supabase administrator access token. }
+    CronBearer: { type: http, scheme: bearer, description: Dedicated NOTIFICATION_CRON_SECRET. }
+  requestBodies:
+    NotificationVersion:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [version]
+            properties:
+              version: { type: integer, minimum: 1 }
   parameters:
+    NotificationCampaignId:
+      description: UUID of the notification campaign to manage.
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    NotificationPage:
+      description: One-based page number.
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    NotificationLimit:
+      description: Maximum records per page.
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
     RequestIdHeader:
       name: X-Request-Id
       in: header
@@ -1261,6 +1490,37 @@ components:
         minLength: 1
       example: Soekarno
   responses:
+    NotificationSuccess:
+      description: Successful notification operation with data in the standard response envelope.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [success, message, data]
+            properties:
+              success: { type: boolean, const: true }
+              message: { type: string }
+              data: {}
+    NotificationUnauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotificationForbidden:
+      description: Verified user is not in the administrator allowlist.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotificationNotFound:
+      description: Campaign was not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    NotificationConflict:
+      description: Stale version or invalid state transition.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
     ValidationError:
       description: Request parameters are invalid.
       content:
@@ -1370,6 +1630,25 @@ components:
                 code: UPSTREAM_TIMEOUT
                 requestId: client-request-1
   schemas:
+    NotificationStatus:
+      description: Campaign lifecycle status.
+      type: string
+      enum: [draft, scheduled, paused, cancelled, sending, sent, failed, unknown]
+    NotificationCampaignInput:
+      type: object
+      additionalProperties: false
+      required: [topic, title, body, destination, schedule_mode]
+      properties:
+        topic: { type: string, enum: [word_of_day, trending_words, proverbs] }
+        title: { type: string, minLength: 1, maxLength: 100 }
+        body: { type: string, minLength: 1, maxLength: 500 }
+        destination: { type: string, pattern: "^(word/[^/]+|proverb/[^/]+)$", maxLength: 300 }
+        schedule_mode: { type: string, enum: [immediate, once, daily, weekly] }
+        start_date: { type: string, format: date }
+        local_time: { type: string, pattern: "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$" }
+        weekday: { type: integer, minimum: 0, maximum: 6, description: Sunday is 0. }
+        end_date: { type: string, format: date }
+      description: Jakarta local schedule. Immediate needs no date or time; once and recurring modes need start_date and local_time. Weekly also needs weekday.
     WordStudyDefinition:
       description: One client-supplied KBBI definition.
       type: object
@@ -1677,6 +1956,9 @@ components:
         - UPSTREAM_TIMEOUT
         - UPSTREAM_UNAVAILABLE
         - INTERNAL_ERROR
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - CONFLICT
     ValidationErrorDetail:
       description: Field-level validation failure details.
       type: object
