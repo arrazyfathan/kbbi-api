@@ -22,7 +22,7 @@ export const firebaseSender: Sender = async (delivery, expiresAt) => {
     initializeApp({ credential, projectId: config.firebaseProjectId });
   }
   const message = {
-    topic: `${config.notificationEnvironment}_${delivery.topic}`,
+    topic: `${delivery.environment}_${delivery.topic}`,
     data: {
       schema_version: "1",
       campaign_id: delivery.campaign_id,

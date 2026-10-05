@@ -5,10 +5,12 @@ import { conflictError, notFoundError, serviceUnavailableError, validationError 
 
 const uuid = z.uuid();
 const topic = z.enum(["word_of_day", "trending_words", "proverbs"]);
+const environment = z.enum(["development", "production"]).default(config.notificationEnvironment);
 const date = z.iso.date();
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/);
 const content = z.strictObject({
   topic,
+  environment,
   title: z.string().trim().min(1).max(100),
   body: z.string().trim().min(1).max(500),
   destination: z
@@ -52,7 +54,8 @@ export const campaignInput = z
       expires_at: new Date().toISOString(),
     };
     const message = {
-      topic: `production_${input.topic}`,
+      topic: `${input.environment}_${input.topic}`,
+      environment: input.environment,
       data: payload,
       android: { priority: "normal", ttl: 86_400_000 },
     };
@@ -67,6 +70,7 @@ export type Delivery = {
   campaign_id: string;
   occurrence_at: string;
   topic: string;
+  environment: "development" | "production";
   title: string;
   body: string;
   destination: string;
