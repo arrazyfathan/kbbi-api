@@ -14,6 +14,9 @@ export function createNotificationRouter(makeService: () => NotificationService 
   const controller = new NotificationController(makeService);
   admin.use(asyncHandler(controller.authorize));
   admin.get("/health", asyncHandler(controller.health));
+  admin.get("/destinations", asyncHandler(controller.listDestinations));
+  admin.post("/destinations", asyncHandler(controller.saveDestination));
+  admin.delete("/destinations", asyncHandler(controller.deleteDestination));
   admin.get("/", asyncHandler(controller.list));
   admin.post("/", asyncHandler(controller.create));
   admin.get("/:id", asyncHandler(controller.get));

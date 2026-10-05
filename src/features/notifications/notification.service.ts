@@ -146,6 +146,30 @@ export class NotificationService {
     return { items: data, total: count ?? 0, page, limit };
   }
 
+  async listDestinations() {
+    const { data, error } = await this.client
+      .from("notification_saved_destinations")
+      .select("value,created_at,updated_at")
+      .order("value", { ascending: true });
+    checkDatabase(error);
+    return data ?? [];
+  }
+
+  async saveDestination(actor: string, value: string) {
+    const { error } = await this.client.from("notification_saved_destinations").upsert(
+      { value, created_by: actor, updated_at: new Date().toISOString() },
+      { onConflict: "value" },
+    );
+    checkDatabase(error);
+    return this.listDestinations();
+  }
+
+  async deleteDestination(value: string) {
+    const { error } = await this.client.from("notification_saved_destinations").delete().eq("value", value);
+    checkDatabase(error);
+    return this.listDestinations();
+  }
+
   async get(id: string) {
     const { data, error } = await this.client.from("notification_campaigns").select("*").eq("id", id).maybeSingle();
     checkDatabase(error);

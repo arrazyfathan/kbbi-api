@@ -61,6 +61,63 @@ paths:
         "400": { $ref: "#/components/responses/ValidationError" }
         "401": { $ref: "#/components/responses/NotificationUnauthorized" }
         "403": { $ref: "#/components/responses/NotificationForbidden" }
+  /api/v1/admin/notification-campaigns/destinations:
+    get:
+      tags: [Notification Campaigns]
+      summary: List saved mobile app destinations.
+      description: Returns the shared word and proverb destinations available to administrators.
+      operationId: listSavedNotificationDestinations
+      security: [{ AdminBearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+    post:
+      tags: [Notification Campaigns]
+      summary: Save a mobile app destination.
+      operationId: saveNotificationDestination
+      security: [{ AdminBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [value]
+              properties:
+                value:
+                  type: string
+                  maxLength: 300
+                  pattern: "^(word/[^/]+|proverb/[^/]+)$"
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+    delete:
+      tags: [Notification Campaigns]
+      summary: Remove a saved mobile app destination.
+      operationId: deleteNotificationDestination
+      security: [{ AdminBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [value]
+              properties:
+                value:
+                  type: string
+                  maxLength: 300
+                  pattern: "^(word/[^/]+|proverb/[^/]+)$"
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
   /api/v1/admin/notification-campaigns/health:
     get:
       tags: [Notification Campaigns]
