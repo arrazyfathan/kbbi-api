@@ -40,6 +40,7 @@ describe("notification PostgreSQL migration", () => {
       values ('${historic}','word_of_day','Title','Body','word/term','sending','${actor}');
     `);
     await db.exec(readFileSync("supabase/migrations/20261005000000_notification_scheduling.sql", "utf8"));
+    await db.exec(readFileSync("supabase/migrations/20261008000000_notification_campaign_archive.sql", "utf8"));
   }, 30_000);
 
   beforeEach(async () => {
@@ -48,6 +49,50 @@ describe("notification PostgreSQL migration", () => {
   });
   afterAll(async () => {
     await db?.close();
+  });
+
+  it("archives campaigns with version checks and permanently deletes only archived records", async () => {
+    const id = await create();
+    const archived = await db.query<{ status: string; version: number; archived_at: Date }>(
+      "select * from notification_archive_campaign($1::uuid,1,$2::uuid)",
+      [id, actor],
+    );
+    expect(archived.rows[0].status).toBe("archived");
+    expect(archived.rows[0].version).toBe(2);
+    expect(archived.rows[0].archived_at).toBeTruthy();
+    await db.query(
+      `insert into notification_deliveries(campaign_id,occurrence_key,occurrence_at,topic,title,body,destination,outcome)
+       values ($1::uuid,'prior-attempt',now(),'word_of_day','Title','Body','word/term','sent')`,
+      [id],
+    );
+    await expect(db.query("select notification_archive_campaign($1::uuid,1,$2::uuid)", [id, actor])).rejects.toThrow(
+      "version_conflict",
+    );
+    await expect(
+      db.query("select notification_delete_archived_campaign($1::uuid,1,$2::uuid)", [id, actor]),
+    ).rejects.toThrow("version_conflict");
+    const deleted = await db.query<{ result: { deleted: boolean } }>(
+      "select notification_delete_archived_campaign($1::uuid,2,$2::uuid) as result",
+      [id, actor],
+    );
+    expect(deleted.rows[0].result.deleted).toBe(true);
+    await expect(db.query("select * from notification_campaigns where id=$1::uuid", [id])).resolves.toMatchObject({
+      rows: [],
+    });
+    await expect(
+      db.query("select * from notification_deliveries where campaign_id=$1::uuid", [id]),
+    ).resolves.toMatchObject({ rows: [] });
+  });
+
+  it("rejects archiving active schedules and deleting campaigns before archiving", async () => {
+    const id = await create("daily");
+    await db.query("select * from notification_change_campaign('schedule',$1::uuid,1,$2::uuid)", [id, actor]);
+    await expect(db.query("select notification_archive_campaign($1::uuid,2,$2::uuid)", [id, actor])).rejects.toThrow(
+      "invalid_transition",
+    );
+    await expect(
+      db.query("select notification_delete_archived_campaign($1::uuid,2,$2::uuid)", [id, actor]),
+    ).rejects.toThrow("invalid_transition");
   });
 
   it("backfills historical attempts and recovers historical sending state", async () => {

@@ -50,6 +50,8 @@ describe("notification routes", () => {
     change: vi.fn(async () => {
       throw conflictError();
     }),
+    archive: vi.fn(async () => ({ id: "campaign", status: "archived", version: 2 })),
+    deleteArchived: vi.fn(async () => ({ id: "campaign", deleted: true })),
   };
   const app = express();
   app.use(express.json());
@@ -64,6 +66,8 @@ describe("notification routes", () => {
     ["post", ""],
     ["get", "/health"],
     ["get", "/id"],
+    ["post", "/id/archive"],
+    ["delete", "/id"],
     ["patch", "/id"],
     ["get", "/id/deliveries"],
     ["post", "/id/send"],
@@ -90,6 +94,32 @@ describe("notification routes", () => {
       .set("Authorization", "Bearer admin")
       .send({ version: 1 });
     expect(response.status).toBe(409);
+  });
+
+  it("archives a campaign through the authenticated API", async () => {
+    const response = await request(app)
+      .post("/api/v1/admin/notification-campaigns/00000000-0000-4000-8000-000000000001/archive")
+      .set("Authorization", "Bearer admin")
+      .send({ version: 1 });
+    expect(response.status).toBe(200);
+    expect(fake.archive).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001", 1, "actor-id");
+  });
+
+  it("requires an explicit permanent flag and version for campaign deletion", async () => {
+    const response = await request(app)
+      .delete("/api/v1/admin/notification-campaigns/00000000-0000-4000-8000-000000000001")
+      .set("Authorization", "Bearer admin")
+      .send({ version: 1 });
+    expect(response.status).toBe(400);
+    expect(fake.deleteArchived).not.toHaveBeenCalled();
+  });
+
+  it("accepts archived as a campaign list filter", async () => {
+    const response = await request(app)
+      .get("/api/v1/admin/notification-campaigns?status=archived")
+      .set("Authorization", "Bearer admin");
+    expect(response.status).toBe(200);
+    expect(fake.list).toHaveBeenCalledWith("archived", 1, 20);
   });
 
   it("rejects missing Cron authentication", async () => {

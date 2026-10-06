@@ -20,6 +20,8 @@ export function createNotificationRouter(makeService: () => NotificationService 
   admin.get("/", asyncHandler(controller.list));
   admin.post("/", asyncHandler(controller.create));
   admin.get("/:id", asyncHandler(controller.get));
+  admin.post("/:id/archive", asyncHandler(controller.archive));
+  admin.delete("/:id", asyncHandler(controller.deleteCampaign));
   admin.patch("/:id", asyncHandler(controller.edit));
   admin.get("/:id/deliveries", asyncHandler(controller.deliveries));
   admin.post("/:id/send", asyncHandler(controller.send));

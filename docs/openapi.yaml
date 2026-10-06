@@ -166,6 +166,27 @@ paths:
         "403": { $ref: "#/components/responses/NotificationForbidden" }
         "404": { $ref: "#/components/responses/NotificationNotFound" }
         "409": { $ref: "#/components/responses/NotificationConflict" }
+    delete:
+      tags: [Notification Campaigns]
+      summary: Permanently delete an archived campaign.
+      description: Requires permanent=true and the current version. Removes delivery records and the campaign record irreversibly.
+      operationId: permanentlyDeleteArchivedNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/NotificationCampaignId" }
+        - name: permanent
+          in: query
+          description: Must be true to confirm irreversible deletion.
+          required: true
+          schema: { type: boolean, enum: [true] }
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "409": { $ref: "#/components/responses/NotificationConflict" }
   /api/v1/admin/notification-campaigns/{id}/deliveries:
     parameters:
       - { $ref: "#/components/parameters/NotificationCampaignId" }
@@ -183,6 +204,21 @@ paths:
         "401": { $ref: "#/components/responses/NotificationUnauthorized" }
         "403": { $ref: "#/components/responses/NotificationForbidden" }
         "404": { $ref: "#/components/responses/NotificationNotFound" }
+  /api/v1/admin/notification-campaigns/{id}/archive:
+    post:
+      tags: [Notification Campaigns]
+      summary: Archive a completed or draft campaign using its current version.
+      description: Scheduled, paused, and sending campaigns must be stopped before archiving. Archived campaigns stay in storage and can be permanently deleted separately.
+      operationId: archiveNotificationCampaign
+      security: [{ AdminBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/NotificationCampaignId" }]
+      requestBody: { $ref: "#/components/requestBodies/NotificationVersion" }
+      responses:
+        "200": { $ref: "#/components/responses/NotificationSuccess" }
+        "401": { $ref: "#/components/responses/NotificationUnauthorized" }
+        "403": { $ref: "#/components/responses/NotificationForbidden" }
+        "404": { $ref: "#/components/responses/NotificationNotFound" }
+        "409": { $ref: "#/components/responses/NotificationConflict" }
   /api/v1/admin/notification-campaigns/{id}/send:
     post:
       tags: [Notification Campaigns]
@@ -1690,7 +1726,7 @@ components:
     NotificationStatus:
       description: Campaign lifecycle status.
       type: string
-      enum: [draft, scheduled, paused, cancelled, sending, sent, failed, unknown]
+      enum: [draft, scheduled, paused, cancelled, sending, sent, failed, unknown, archived]
     NotificationCampaignInput:
       type: object
       additionalProperties: false

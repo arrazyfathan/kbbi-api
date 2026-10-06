@@ -6,9 +6,24 @@ import { forbiddenError, unauthorizedError, validationError } from "../../lib/ap
 import { NotificationService, parseCampaign, parseUuid } from "./notification.service";
 
 const versionSchema = z.strictObject({ version: z.number().int().positive() });
-const statusSchema = z.enum(["draft", "scheduled", "paused", "cancelled", "sending", "sent", "failed", "unknown"]);
+const statusSchema = z.enum([
+  "draft",
+  "scheduled",
+  "paused",
+  "cancelled",
+  "sending",
+  "sent",
+  "failed",
+  "unknown",
+  "archived",
+]);
 const savedDestinationSchema = z.strictObject({
-  value: z.string().trim().min(1).max(300).regex(/^(word\/[^/]+|proverb\/[^/]+)$/u),
+  value: z
+    .string()
+    .trim()
+    .min(1)
+    .max(300)
+    .regex(/^(word\/[^/]+|proverb\/[^/]+)$/u),
 });
 const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -61,20 +76,41 @@ export class NotificationController {
     res.status(201).json({ success: true, message: "Campaign created", data });
   };
   listDestinations = async (_req: Request, res: Response): Promise<void> => {
-    res.json({ success: true, message: "Saved destinations fetched", data: await this.makeService().listDestinations() });
+    res.json({
+      success: true,
+      message: "Saved destinations fetched",
+      data: await this.makeService().listDestinations(),
+    });
   };
   saveDestination = async (req: Request, res: Response): Promise<void> => {
     const parsed = savedDestinationSchema.safeParse(req.body);
     if (!parsed.success) throw validationError("A supported word or proverb destination is required");
-    res.json({ success: true, message: "Destination saved", data: await this.makeService().saveDestination(this.actor(req), parsed.data.value) });
+    res.json({
+      success: true,
+      message: "Destination saved",
+      data: await this.makeService().saveDestination(this.actor(req), parsed.data.value),
+    });
   };
   deleteDestination = async (req: Request, res: Response): Promise<void> => {
     const parsed = savedDestinationSchema.safeParse(req.body);
     if (!parsed.success) throw validationError("A supported word or proverb destination is required");
-    res.json({ success: true, message: "Destination removed", data: await this.makeService().deleteDestination(parsed.data.value) });
+    res.json({
+      success: true,
+      message: "Destination removed",
+      data: await this.makeService().deleteDestination(parsed.data.value),
+    });
   };
   get = async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, message: "Campaign fetched", data: await this.makeService().get(id(req)) });
+  };
+  archive = async (req: Request, res: Response): Promise<void> => {
+    const data = await this.makeService().archive(id(req), version(req.body), this.actor(req));
+    res.json({ success: true, message: "Campaign archived", data });
+  };
+  deleteCampaign = async (req: Request, res: Response): Promise<void> => {
+    if (req.query.permanent !== "true") throw validationError("Permanent deletion must be explicitly requested");
+    const data = await this.makeService().deleteArchived(id(req), version(req.body), this.actor(req));
+    res.json({ success: true, message: "Archived campaign permanently deleted", data });
   };
   edit = async (req: Request, res: Response): Promise<void> => {
     const parsed = z.strictObject({ version: z.number().int().positive(), campaign: z.unknown() }).safeParse(req.body);

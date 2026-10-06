@@ -156,10 +156,9 @@ export class NotificationService {
   }
 
   async saveDestination(actor: string, value: string) {
-    const { error } = await this.client.from("notification_saved_destinations").upsert(
-      { value, created_by: actor, updated_at: new Date().toISOString() },
-      { onConflict: "value" },
-    );
+    const { error } = await this.client
+      .from("notification_saved_destinations")
+      .upsert({ value, created_by: actor, updated_at: new Date().toISOString() }, { onConflict: "value" });
     checkDatabase(error);
     return this.listDestinations();
   }
@@ -191,6 +190,26 @@ export class NotificationService {
 
   async create(actor: string, input: CampaignInput) {
     const { data, error } = await this.client.rpc("notification_create_campaign", { p_actor: actor, p_values: input });
+    checkDatabase(error);
+    return data;
+  }
+
+  async archive(id: string, version: number, actor: string) {
+    const { data, error } = await this.client.rpc("notification_archive_campaign", {
+      p_id: id,
+      p_version: version,
+      p_actor: actor,
+    });
+    checkDatabase(error);
+    return data;
+  }
+
+  async deleteArchived(id: string, version: number, actor: string) {
+    const { data, error } = await this.client.rpc("notification_delete_archived_campaign", {
+      p_id: id,
+      p_version: version,
+      p_actor: actor,
+    });
     checkDatabase(error);
     return data;
   }
