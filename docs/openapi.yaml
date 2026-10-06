@@ -75,6 +75,7 @@ paths:
     post:
       tags: [Notification Campaigns]
       summary: Save a mobile app destination.
+      description: Saves a shared word or proverb destination for use in notification campaigns.
       operationId: saveNotificationDestination
       security: [{ AdminBearer: [] }]
       requestBody:
@@ -98,6 +99,7 @@ paths:
     delete:
       tags: [Notification Campaigns]
       summary: Remove a saved mobile app destination.
+      description: Removes a shared word or proverb destination from the available campaign destinations.
       operationId: deleteNotificationDestination
       security: [{ AdminBearer: [] }]
       requestBody:
