@@ -128,6 +128,48 @@ describe("notification routes", () => {
   });
 });
 
+describe("notification campaign listing", () => {
+  it("hides archived campaigns from the default history list", async () => {
+    const filters: Array<[string, string]> = [];
+    const builder = {
+      eq: vi.fn((column: string, value: string) => {
+        filters.push([column, value]);
+        return builder;
+      }),
+      neq: vi.fn((column: string, value: string) => {
+        filters.push([column, value]);
+        return builder;
+      }),
+      order: () => builder,
+      range: async () => ({ data: [], count: 0, error: null }),
+    };
+    const client = { from: () => ({ select: () => builder }) };
+    const service = new NotificationService(client as never, vi.fn());
+    await service.list(undefined, 1, 20);
+    expect(filters).toEqual([["status", "archived"]]);
+  });
+
+  it("returns archived campaigns when the archive status is selected", async () => {
+    const filters: Array<[string, string]> = [];
+    const builder = {
+      eq: vi.fn((column: string, value: string) => {
+        filters.push([column, value]);
+        return builder;
+      }),
+      neq: vi.fn((column: string, value: string) => {
+        filters.push([column, value]);
+        return builder;
+      }),
+      order: () => builder,
+      range: async () => ({ data: [], count: 0, error: null }),
+    };
+    const client = { from: () => ({ select: () => builder }) };
+    const service = new NotificationService(client as never, vi.fn());
+    await service.list("archived", 1, 20);
+    expect(filters).toEqual([["status", "archived"]]);
+  });
+});
+
 describe("notification send outcome", () => {
   const previous = config.notificationSendingEnabled;
   afterEach(() => {

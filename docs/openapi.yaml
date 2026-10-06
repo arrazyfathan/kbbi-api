@@ -30,7 +30,7 @@ paths:
     get:
       tags: [Notification Campaigns]
       summary: List notification campaigns.
-      description: Returns newest campaigns first, with optional status and pagination filters.
+      description: Returns newest campaigns first, with optional status and pagination filters. Archived campaigns are excluded unless status=archived is requested.
       operationId: listNotificationCampaigns
       security: [{ AdminBearer: [] }]
       parameters:

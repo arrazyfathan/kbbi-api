@@ -138,7 +138,7 @@ export class NotificationService {
 
   async list(status: string | undefined, page: number, limit: number) {
     let query = this.client.from("notification_campaigns").select("*", { count: "exact" });
-    if (status) query = query.eq("status", status);
+    query = status ? query.eq("status", status) : query.neq("status", "archived");
     const { data, count, error } = await query
       .order("created_at", { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
